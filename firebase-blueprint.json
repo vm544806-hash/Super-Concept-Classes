@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "General portal settings and contact information",
+      "type": "object",
+      "properties": {
+        "websiteName": { "type": "string" },
+        "logoText": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "secondaryColor": { "type": "string" },
+        "footerText": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "address": { "type": "string" },
+        "adsEnabled": { "type": "boolean" }
+      }
+    },
+    "Test": {
+      "title": "Test",
+      "description": "Examination paper or quiz set",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "durationMins": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "negativeMarking": { "type": "number" },
+        "passingMarks": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "isPopular": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "attemptsCount": { "type": "number" }
+      }
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Question item inside a test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "testId": { "type": "string" },
+        "question": { "type": "string" },
+        "type": { "type": "string" },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "subject": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "marks": { "type": "number" }
+      }
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Announcement notice on the portal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "isImportant": { "type": "boolean" }
+      }
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Result of an exam taken by a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "testId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "score": { "type": "number" },
+        "percentage": { "type": "number" }
+      }
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Leaderboard entry for high scorers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentName": { "type": "string" },
+        "score": { "type": "number" },
+        "percentage": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/settings/{docId}": {
+      "schema": "SiteSettings",
+      "description": "Portal site settings"
+    },
+    "/tests/{testId}": {
+      "schema": "Test",
+      "description": "Collection of exam papers"
+    },
+    "/questions/{qId}": {
+      "schema": "Question",
+      "description": "Collection of test questions"
+    },
+    "/notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Collection of notices"
+    },
+    "/results/{resultId}": {
+      "schema": "ExamResult",
+      "description": "Collection of student exam results"
+    },
+    "/leaderboard/{lbId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Leaderboard entries"
+    }
+  }
+}

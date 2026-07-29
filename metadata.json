@@ -1,0 +1,6 @@
+{
+  "name": "Super Concept Classes By Daiyash Sir",
+  "description": "Online Examination Portal with Student Test Engine and Admin Management System for Class 10th, 11th, 12th, and B.A.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
