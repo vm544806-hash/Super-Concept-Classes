@@ -46,37 +46,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, pass: string) => {
     const cleanEmail = email.trim().toLowerCase();
+    const ADMIN_EMAIL = 'vm544806@gmail.com';
+    const ADMIN_PASSWORD = 'Vishal1234';
 
-    if (cleanEmail !== ADMIN_EMAIL.toLowerCase()) {
-      throw new Error('Access Denied: Only designated Admin email (vm544806@gmail.com) can log in.');
+    // Strict credential check to prevent email leakage and unauthorized password bypass
+    if (cleanEmail !== ADMIN_EMAIL.toLowerCase() || pass !== ADMIN_PASSWORD) {
+      throw new Error('Invalid email or password. Access Denied.');
     }
 
     try {
-      // Try Firebase Auth
+      // Attempt Firebase Auth synchronization
       await signInWithEmailAndPassword(auth, cleanEmail, pass);
-      setIsAdmin(true);
-      localStorage.setItem('sc_admin_session', 'true');
     } catch (err: any) {
-      console.warn('Firebase Auth note:', err?.code, err?.message);
-
-      // Try creating account if user not found
+      console.warn('Firebase Auth sync note:', err?.code, err?.message);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-          setIsAdmin(true);
-          localStorage.setItem('sc_admin_session', 'true');
-          return;
         } catch (createErr: any) {
-          if (createErr.code === 'auth/email-already-in-use') {
-            throw new Error('Invalid Admin Password. Please try again.');
-          }
+          console.warn('Firebase Auth account creation note:', createErr?.code);
         }
       }
-
-      // Handle operation-not-allowed or Firebase Auth disabled provider gracefully
-      setIsAdmin(true);
-      localStorage.setItem('sc_admin_session', 'true');
     }
+
+    // Set authenticated admin session
+    setIsAdmin(true);
+    localStorage.setItem('sc_admin_session', 'true');
   };
 
   const registerAdmin = async (_email: string, _pass: string) => {
