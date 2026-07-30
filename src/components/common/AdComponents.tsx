@@ -16,45 +16,22 @@ export const InPagePushAdManager: React.FC = () => {
     const shouldShowAds = isHomePage && settings.adsEnabled;
 
     const cleanupAds = () => {
-      // 1. Remove script tag
       const scriptEl = document.getElementById(SCRIPT_ID);
       if (scriptEl) {
         scriptEl.remove();
       }
-
-      // 2. Remove any injected popups/widgets/iframes from MrMnd or in-page push scripts
-      const selectors = [
-        'script[src*="mrmnd.com"]',
-        'iframe[src*="mrmnd.com"]',
-        '[id*="mrmnd"]',
-        '[class*="mrmnd"]',
-        '[id*="mnd-"]',
-        '[class*="mnd-"]'
-      ];
-
-      selectors.forEach((selector) => {
-        try {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach((el) => {
-            if (el.id !== SCRIPT_ID && el.id !== 'root' && !el.closest('#root')) {
-              el.remove();
-            }
-          });
-        } catch (e) {
-          // Ignore invalid selector errors
-        }
-      });
     };
 
     if (shouldShowAds) {
-      let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-      if (!script) {
-        script = document.createElement('script');
-        script.id = SCRIPT_ID;
-        script.async = true;
-        script.src = SCRIPT_URL;
-        document.head.appendChild(script);
+      const oldScript = document.getElementById(SCRIPT_ID);
+      if (oldScript) {
+        oldScript.remove();
       }
+      const script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.async = true;
+      script.src = SCRIPT_URL;
+      document.body.appendChild(script);
     } else {
       cleanupAds();
     }
@@ -71,12 +48,11 @@ export const InPagePushAdManager: React.FC = () => {
 
 export const HomeBannerAd: React.FC = () => {
   const { settings } = useSettings();
-  const bannerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!settings.adsEnabled || !bannerRef.current) return;
+    if (!settings.adsEnabled) return;
 
-    const SCRIPT_ID = 'mrmnd-banner-dynamic-script';
+    const SCRIPT_ID = 'mrmnd-banner-script-body';
     const oldScript = document.getElementById(SCRIPT_ID);
     if (oldScript) {
       oldScript.remove();
@@ -86,7 +62,7 @@ export const HomeBannerAd: React.FC = () => {
     script.id = SCRIPT_ID;
     script.async = true;
     script.src = 'https://ss.mrmnd.com/banner.js';
-    bannerRef.current.appendChild(script);
+    document.body.appendChild(script);
 
     return () => {
       const s = document.getElementById(SCRIPT_ID);
@@ -97,8 +73,8 @@ export const HomeBannerAd: React.FC = () => {
   if (!settings.adsEnabled) return null;
 
   return (
-    <div id="home-banner-ad" className="w-full my-3 flex justify-center">
-      <div ref={bannerRef} className="inline-block max-w-full text-center">
+    <div id="home-banner-ad" className="w-full my-3 flex justify-center items-center px-2">
+      <div className="inline-flex justify-center items-center max-w-full overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-1 shadow-sm transition-all">
         <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
       </div>
     </div>

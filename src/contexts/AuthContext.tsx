@@ -58,13 +58,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Attempt Firebase Auth synchronization
       await signInWithEmailAndPassword(auth, cleanEmail, pass);
     } catch (err: any) {
-      console.warn('Firebase Auth sync note:', err?.code, err?.message);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, cleanEmail, pass);
         } catch (createErr: any) {
-          console.warn('Firebase Auth account creation note:', createErr?.code);
+          if (createErr?.code !== 'auth/operation-not-allowed') {
+            console.warn('Firebase Auth creation note:', createErr?.code);
+          }
         }
+      } else if (err?.code !== 'auth/operation-not-allowed') {
+        console.warn('Firebase Auth sync note:', err?.code, err?.message);
       }
     }
 
