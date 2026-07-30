@@ -1,37 +1,105 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
 import { ExternalLink, Sparkles } from 'lucide-react';
 
+export const InPagePushAdManager: React.FC = () => {
+  const location = useLocation();
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    const SCRIPT_ID = 'mrmnd-inpage-push-script';
+    const SCRIPT_URL = 'https://ss.mrmnd.com/static/3122bc8f-82a1-44a5-8aa7-ab2fe5d94fa5.js';
+
+    // Enable ad strictly on the home page ('/') and when adsEnabled is active
+    const isHomePage = location.pathname === '/';
+    const shouldShowAds = isHomePage && settings.adsEnabled;
+
+    const cleanupAds = () => {
+      // 1. Remove script tag
+      const scriptEl = document.getElementById(SCRIPT_ID);
+      if (scriptEl) {
+        scriptEl.remove();
+      }
+
+      // 2. Remove any injected popups/widgets/iframes from MrMnd or in-page push scripts
+      const selectors = [
+        'script[src*="mrmnd.com"]',
+        'iframe[src*="mrmnd.com"]',
+        '[id*="mrmnd"]',
+        '[class*="mrmnd"]',
+        '[id*="mnd-"]',
+        '[class*="mnd-"]'
+      ];
+
+      selectors.forEach((selector) => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach((el) => {
+            if (el.id !== SCRIPT_ID && el.id !== 'root' && !el.closest('#root')) {
+              el.remove();
+            }
+          });
+        } catch (e) {
+          // Ignore invalid selector errors
+        }
+      });
+    };
+
+    if (shouldShowAds) {
+      let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = SCRIPT_ID;
+        script.async = true;
+        script.src = SCRIPT_URL;
+        document.head.appendChild(script);
+      }
+    } else {
+      cleanupAds();
+    }
+
+    return () => {
+      if (location.pathname !== '/') {
+        cleanupAds();
+      }
+    };
+  }, [location.pathname, settings.adsEnabled]);
+
+  return null;
+};
+
 export const HomeBannerAd: React.FC = () => {
   const { settings } = useSettings();
+  const bannerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!settings.adsEnabled || !bannerRef.current) return;
+
+    const SCRIPT_ID = 'mrmnd-banner-dynamic-script';
+    const oldScript = document.getElementById(SCRIPT_ID);
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.async = true;
+    script.src = 'https://ss.mrmnd.com/banner.js';
+    bannerRef.current.appendChild(script);
+
+    return () => {
+      const s = document.getElementById(SCRIPT_ID);
+      if (s) s.remove();
+    };
+  }, [settings.adsEnabled]);
+
   if (!settings.adsEnabled) return null;
 
   return (
-    <div id="home-banner-ad" className="w-full max-w-7xl mx-auto my-6 px-4">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-white shadow-md border border-blue-400/20">
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <Sparkles className="w-64 h-64 text-white" />
-        </div>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
-          <div className="flex items-start gap-4">
-            <span className="px-2 py-0.5 text-xs font-semibold uppercase bg-amber-400 text-slate-900 rounded">
-              Sponsored
-            </span>
-            <div>
-              <h4 className="text-lg font-bold tracking-tight">Boost Your Exam Prep with Premium AI Notes & Live Test Series</h4>
-              <p className="text-sm text-blue-100 mt-1">Get 50% discount on annual mock test pass + instant subject breakdown reports.</p>
-            </div>
-          </div>
-          <a
-            href="https://smartexamportal.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold text-sm px-5 py-2.5 rounded-xl transition-all shadow shrink-0"
-          >
-            Claim Offer Now
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
+    <div id="home-banner-ad" className="w-full my-3 flex justify-center">
+      <div ref={bannerRef} className="inline-block max-w-full text-center">
+        <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
       </div>
     </div>
   );

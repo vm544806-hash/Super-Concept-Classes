@@ -33,8 +33,14 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const isOfflineOrUnavailable = 
+    errorMessage.includes('unavailable') ||
+    errorMessage.includes('offline') ||
+    errorMessage.includes('Could not reach Cloud Firestore backend');
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid || null,
       email: auth.currentUser?.email || null,
@@ -42,7 +48,16 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+
+  if (isOfflineOrUnavailable) {
+    console.warn(`Firestore is operating in offline mode or reconnecting (${operationType} on ${path}):`, errorMessage);
+    return;
+  }
+
   console.error('Firestore Error Details: ', JSON.stringify(errInfo));
+  if (errorMessage.includes('permission-denied') || errorMessage.includes('Missing or insufficient permissions')) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }
 
 // Memory state cache initialized empty (populated exclusively via Firestore snapshots)
