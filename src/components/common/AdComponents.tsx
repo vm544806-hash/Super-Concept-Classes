@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
-import { ExternalLink, Sparkles } from 'lucide-react';
 
 export const InPagePushAdManager: React.FC = () => {
   const location = useLocation();
@@ -11,34 +10,55 @@ export const InPagePushAdManager: React.FC = () => {
     const SCRIPT_ID = 'mrmnd-inpage-push-script';
     const SCRIPT_URL = 'https://ss.mrmnd.com/static/3122bc8f-82a1-44a5-8aa7-ab2fe5d94fa5.js';
 
-    // Enable ad strictly on the home page ('/') and when adsEnabled is active
+    // Show push ads strictly ONLY on the home page ('/') and when adsEnabled is active
     const isHomePage = location.pathname === '/';
     const shouldShowAds = isHomePage && settings.adsEnabled;
 
-    const cleanupAds = () => {
+    const cleanupPushAds = () => {
+      // 1. Remove script tag if dynamically loaded
       const scriptEl = document.getElementById(SCRIPT_ID);
       if (scriptEl) {
         scriptEl.remove();
       }
+
+      // 2. Remove any injected push popups / overlays / iframes created by Mondiad
+      const selectors = [
+        'script[src*="mrmnd.com/static"]',
+        'iframe[src*="mrmnd"]',
+        '[id*="mnd"]',
+        '[class*="mnd"]'
+      ];
+
+      selectors.forEach((selector) => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach((el) => {
+            if (el.id !== SCRIPT_ID && el.id !== 'root' && !el.closest('#root')) {
+              el.remove();
+            }
+          });
+        } catch (e) {
+          // ignore
+        }
+      });
     };
 
     if (shouldShowAds) {
-      const oldScript = document.getElementById(SCRIPT_ID);
-      if (oldScript) {
-        oldScript.remove();
+      let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = SCRIPT_ID;
+        script.async = true;
+        script.src = SCRIPT_URL;
+        document.head.appendChild(script);
       }
-      const script = document.createElement('script');
-      script.id = SCRIPT_ID;
-      script.async = true;
-      script.src = SCRIPT_URL;
-      document.body.appendChild(script);
     } else {
-      cleanupAds();
+      cleanupPushAds();
     }
 
     return () => {
       if (location.pathname !== '/') {
-        cleanupAds();
+        cleanupPushAds();
       }
     };
   }, [location.pathname, settings.adsEnabled]);
@@ -48,33 +68,35 @@ export const InPagePushAdManager: React.FC = () => {
 
 export const HomeBannerAd: React.FC = () => {
   const { settings } = useSettings();
+  const location = useLocation();
 
   useEffect(() => {
-    if (!settings.adsEnabled) return;
+    // Only load banner on Home Page when ads are enabled
+    if (!settings.adsEnabled || location.pathname !== '/') return;
 
-    const SCRIPT_ID = 'mrmnd-banner-script-body';
-    const oldScript = document.getElementById(SCRIPT_ID);
-    if (oldScript) {
-      oldScript.remove();
-    }
+    // Small delay ensures React has mounted <div data-mndbanid="..."> in the DOM
+    const timer = setTimeout(() => {
+      const SCRIPT_ID = 'mrmnd-banner-active-script';
+      const existingScript = document.getElementById(SCRIPT_ID);
+      if (existingScript) {
+        existingScript.remove();
+      }
 
-    const script = document.createElement('script');
-    script.id = SCRIPT_ID;
-    script.async = true;
-    script.src = 'https://ss.mrmnd.com/banner.js';
-    document.body.appendChild(script);
+      const script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.async = true;
+      script.src = `https://ss.mrmnd.com/banner.js?cb=${Date.now()}`;
+      document.body.appendChild(script);
+    }, 100);
 
-    return () => {
-      const s = document.getElementById(SCRIPT_ID);
-      if (s) s.remove();
-    };
-  }, [settings.adsEnabled]);
+    return () => clearTimeout(timer);
+  }, [location.pathname, settings.adsEnabled]);
 
-  if (!settings.adsEnabled) return null;
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
 
   return (
-    <div id="home-banner-ad" className="w-full my-3 flex justify-center items-center px-2">
-      <div className="inline-flex justify-center items-center max-w-full overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-1 shadow-sm transition-all">
+    <div id="home-banner-ad" className="w-full my-4 flex justify-center items-center px-2">
+      <div className="inline-block max-w-full overflow-hidden text-center">
         <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
       </div>
     </div>
