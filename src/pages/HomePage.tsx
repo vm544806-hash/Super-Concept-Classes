@@ -59,9 +59,6 @@ export const HomePage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Top Banner Ad */}
-        <HomeBannerAd />
-
         {/* Hero Section */}
         <HeroBanner />
 
@@ -165,6 +162,9 @@ export const HomePage: React.FC = () => {
           <NoticeTeaser notices={notices} />
           <LeaderboardTeaser entries={leaderboard} />
         </div>
+
+        {/* 300x250 Banner Ad placed in the gap right above Telegram Channel Alert Bar */}
+        <HomeBannerAd />
 
       </div>
     </div>

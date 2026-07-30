@@ -74,8 +74,9 @@ export const HomeBannerAd: React.FC = () => {
     // Only load banner on Home Page when ads are enabled
     if (!settings.adsEnabled || location.pathname !== '/') return;
 
-    // Small delay ensures React has mounted <div data-mndbanid="..."> in the DOM
+    // Small delay ensures React has mounted <div id="ad-banner-300x250-container"> in the DOM
     const timer = setTimeout(() => {
+      // 1. Load Mondiad Banner script
       const SCRIPT_ID = 'mrmnd-banner-active-script';
       const existingScript = document.getElementById(SCRIPT_ID);
       if (existingScript) {
@@ -87,6 +88,23 @@ export const HomeBannerAd: React.FC = () => {
       script.async = true;
       script.src = `https://ss.mrmnd.com/banner.js?cb=${Date.now()}`;
       document.body.appendChild(script);
+
+      // 2. Load PrizeFamily Ad script inside the 300x250 border box container
+      const PF_SCRIPT_ID = 'prizefamily-banner-ad-script';
+      const existingPf = document.getElementById(PF_SCRIPT_ID);
+      if (existingPf) {
+        existingPf.remove();
+      }
+
+      const container = document.getElementById('ad-banner-300x250-container');
+      if (container) {
+        const pfScript = document.createElement('script');
+        pfScript.id = PF_SCRIPT_ID;
+        pfScript.async = true;
+        pfScript.referrerPolicy = 'no-referrer-when-downgrade';
+        pfScript.src = '//prizefamily.com/bqX.VbskdqGklO0/YDWwc_/UeNmE9DuGZfUelWktPNTjc/yONTzfEK5jN/jIkutfNlzSI/3TM/TBk/3-M-we';
+        container.appendChild(pfScript);
+      }
     }, 100);
 
     return () => clearTimeout(timer);
@@ -95,9 +113,17 @@ export const HomeBannerAd: React.FC = () => {
   if (!settings.adsEnabled || location.pathname !== '/') return null;
 
   return (
-    <div id="home-banner-ad" className="w-full my-4 flex justify-center items-center px-2">
-      <div className="inline-block max-w-full overflow-hidden text-center">
-        <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
+    <div id="home-banner-ad" className="w-full my-8 flex flex-col justify-center items-center px-4">
+      <div className="flex flex-col items-center justify-center p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md transition-all overflow-hidden max-w-full">
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold tracking-wider uppercase mb-1.5">
+          ADVERTISEMENT (300x250)
+        </span>
+        <div 
+          id="ad-banner-300x250-container"
+          className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-dashed border-slate-200/80 dark:border-slate-800 relative"
+        >
+          <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
+        </div>
       </div>
     </div>
   );

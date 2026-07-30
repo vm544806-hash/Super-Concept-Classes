@@ -507,6 +507,27 @@ export async function deleteNotice(noticeId: string): Promise<void> {
 // --- RESULTS & LEADERBOARD ---
 
 /**
+ * Subscribe to all Exam Results in real-time.
+ */
+export function subscribeToResults(callback: Callback<ExamResult[]>): () => void {
+  callback([...memoryResults]);
+
+  const unsub = onSnapshot(collection(db, 'results'), (snapshot) => {
+    const list: ExamResult[] = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as ExamResult);
+    });
+    list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+    memoryResults = list;
+    callback(list);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, 'results');
+  });
+
+  return unsub;
+}
+
+/**
  * Submit student test result permanently to Firestore.
  */
 export async function submitTestResult(result: ExamResult): Promise<string> {
