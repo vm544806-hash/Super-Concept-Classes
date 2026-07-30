@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, setLogLevel } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -15,20 +15,16 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
-export const db = firebaseConfigData.firestoreDatabaseId && firebaseConfigData.firestoreDatabaseId !== '(default)'
-  ? getFirestore(app, firebaseConfigData.firestoreDatabaseId)
-  : getFirestore(app);
 
-// Test connection on boot to catch offline or connection issues gracefully
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'settings', 'general'));
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
-      console.warn("Firestore status: Operating in offline mode or waiting for connection.");
-    }
-  }
-}
-testConnection();
+// Suppress non-critical internal transport/connection logs from Firebase
+setLogLevel('error');
+
+const dbId = firebaseConfigData.firestoreDatabaseId && firebaseConfigData.firestoreDatabaseId !== '(default)'
+  ? firebaseConfigData.firestoreDatabaseId
+  : undefined;
+
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+}, dbId || '(default)');
 
 export default app;
