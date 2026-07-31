@@ -5,7 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
-import { InPagePushAdManager } from './components/common/AdComponents';
+import { InPagePushAdManager, VideoSliderAdManager } from './components/common/AdComponents';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -44,6 +44,7 @@ export default function App() {
         <AuthProvider>
           <BrowserRouter>
             <InPagePushAdManager />
+            <VideoSliderAdManager />
             <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
               <Navbar />
 
