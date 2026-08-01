@@ -277,40 +277,73 @@ export async function getTestById(id: string): Promise<Test | null> {
 export async function saveTest(testData: Partial<Test> & { id?: string }, isNew: boolean = false): Promise<string> {
   const testId = testData.id || `test-${Date.now()}`;
 
+  let existingTest: Test | null = memoryTests.find(t => t.id === testId) || null;
+  if (!existingTest && testData.id) {
+    try {
+      const snap = await getDoc(doc(db, 'tests', testId));
+      if (snap.exists()) {
+        existingTest = { id: snap.id, ...snap.data() } as Test;
+      }
+    } catch (e) {
+      // Ignore lookup failure
+    }
+  }
+
   // Duplicate check when creating a new test
-  if (isNew || !testData.id) {
+  if (isNew && !existingTest) {
     const existingDoc = await getDoc(doc(db, 'tests', testId));
     if (existingDoc.exists()) {
       throw new Error(`A test with ID "${testId}" already exists. Cannot create duplicate.`);
     }
     // Check title duplicates in memory
-    const titleDuplicate = memoryTests.find(t => t.title.trim().toLowerCase() === testData.title?.trim().toLowerCase());
-    if (titleDuplicate) {
-      throw new Error(`A test with title "${testData.title}" already exists. Duplicate creation prevented.`);
+    if (testData.title) {
+      const titleDuplicate = memoryTests.find(t => t.title.trim().toLowerCase() === testData.title?.trim().toLowerCase() && t.id !== testId);
+      if (titleDuplicate) {
+        throw new Error(`A test with title "${testData.title}" already exists. Duplicate creation prevented.`);
+      }
     }
   }
 
-  const fullTest: Test = {
-    id: testId,
-    title: testData.title || 'Untitled Test',
-    description: testData.description || '',
-    category: testData.category || 'Class 10th',
-    imageUrl: testData.imageUrl || 'https://i.ibb.co/L5Q31mR/ssc-mock-banner.jpg',
-    durationMins: Number(testData.durationMins) || 15,
-    totalQuestions: Number(testData.totalQuestions) || 0,
-    totalMarks: Number(testData.totalMarks) || 20,
-    negativeMarking: Number(testData.negativeMarking) || 0,
-    passingMarks: Number(testData.passingMarks) || 8,
-    instructions: testData.instructions || ['Read questions carefully before answering.'],
-    isPublished: testData.isPublished ?? true,
-    isPopular: testData.isPopular ?? false,
-    isFeatured: testData.isFeatured ?? false,
-    createdAt: testData.createdAt || new Date().toISOString(),
-    attemptsCount: testData.attemptsCount || 0,
-  };
+  const updatePayload: Record<string, any> = {};
+
+  if (isNew && !existingTest) {
+    updatePayload.id = testId;
+    updatePayload.title = testData.title || 'Untitled Test';
+    updatePayload.description = testData.description || '';
+    updatePayload.category = testData.category || 'Class 10th';
+    updatePayload.imageUrl = testData.imageUrl || 'https://i.ibb.co/L5Q31mR/ssc-mock-banner.jpg';
+    updatePayload.durationMins = testData.durationMins !== undefined ? Number(testData.durationMins) : 15;
+    updatePayload.totalQuestions = testData.totalQuestions !== undefined ? Number(testData.totalQuestions) : 0;
+    updatePayload.totalMarks = testData.totalMarks !== undefined ? Number(testData.totalMarks) : 20;
+    updatePayload.negativeMarking = testData.negativeMarking !== undefined ? Number(testData.negativeMarking) : 0;
+    updatePayload.passingMarks = testData.passingMarks !== undefined ? Number(testData.passingMarks) : 8;
+    updatePayload.instructions = testData.instructions || ['Read questions carefully before answering.'];
+    updatePayload.isPublished = testData.isPublished ?? true;
+    updatePayload.isPopular = testData.isPopular ?? false;
+    updatePayload.isFeatured = testData.isFeatured ?? false;
+    updatePayload.createdAt = testData.createdAt || new Date().toISOString();
+    updatePayload.attemptsCount = testData.attemptsCount !== undefined ? Number(testData.attemptsCount) : 0;
+  } else {
+    updatePayload.id = testId;
+    if (testData.title !== undefined) updatePayload.title = testData.title;
+    if (testData.description !== undefined) updatePayload.description = testData.description;
+    if (testData.category !== undefined) updatePayload.category = testData.category;
+    if (testData.imageUrl !== undefined) updatePayload.imageUrl = testData.imageUrl;
+    if (testData.durationMins !== undefined) updatePayload.durationMins = Number(testData.durationMins);
+    if (testData.totalQuestions !== undefined) updatePayload.totalQuestions = Number(testData.totalQuestions);
+    if (testData.totalMarks !== undefined) updatePayload.totalMarks = Number(testData.totalMarks);
+    if (testData.negativeMarking !== undefined) updatePayload.negativeMarking = Number(testData.negativeMarking);
+    if (testData.passingMarks !== undefined) updatePayload.passingMarks = Number(testData.passingMarks);
+    if (testData.instructions !== undefined) updatePayload.instructions = testData.instructions;
+    if (testData.isPublished !== undefined) updatePayload.isPublished = testData.isPublished;
+    if (testData.isPopular !== undefined) updatePayload.isPopular = testData.isPopular;
+    if (testData.isFeatured !== undefined) updatePayload.isFeatured = testData.isFeatured;
+    if (testData.createdAt !== undefined) updatePayload.createdAt = testData.createdAt;
+    if (testData.attemptsCount !== undefined) updatePayload.attemptsCount = Number(testData.attemptsCount);
+  }
 
   try {
-    await setDoc(doc(db, 'tests', testId), fullTest, { merge: true });
+    await setDoc(doc(db, 'tests', testId), updatePayload, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `tests/${testId}`);
     throw err;
@@ -378,51 +411,120 @@ export async function getAllQuestions(): Promise<Question[]> {
  * Save or update a Question document in Firestore.
  * Prevents creation of duplicate questions by checking existing document IDs.
  */
-export async function saveQuestion(questionData: Partial<Question> & { testId: string }, isNew: boolean = false): Promise<string> {
-  const qId = questionData.id || `q-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+export async function saveQuestion(
+  questionData: Partial<Question> & { testId: string },
+  isNew: boolean = false,
+  skipTestTotalUpdate: boolean = false
+): Promise<string> {
+  const qId = questionData.id || `q-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-  if (isNew || !questionData.id) {
+  let existingQ: Question | null = memoryQuestions.find(q => q.id === qId) || null;
+
+  if (isNew && !existingQ) {
     const existingDoc = await getDoc(doc(db, 'questions', qId));
     if (existingDoc.exists()) {
       throw new Error(`A question with ID "${qId}" already exists. Duplicate creation prevented.`);
     }
   }
 
-  const fullQ: Question = {
-    id: qId,
-    testId: questionData.testId,
-    question: questionData.question || '',
-    imageUrl: questionData.imageUrl || '',
-    paragraphText: questionData.paragraphText || '',
-    type: questionData.type || 'single',
-    options: questionData.options || [
+  const updatePayload: Record<string, any> = {};
+
+  if (isNew && !existingQ) {
+    updatePayload.id = qId;
+    updatePayload.testId = questionData.testId;
+    updatePayload.question = questionData.question || '';
+    updatePayload.imageUrl = questionData.imageUrl || '';
+    updatePayload.paragraphText = questionData.paragraphText || '';
+    updatePayload.type = questionData.type || 'single';
+    updatePayload.options = questionData.options || [
       { id: 'A', text: '' },
       { id: 'B', text: '' },
       { id: 'C', text: '' },
       { id: 'D', text: '' }
-    ],
-    correctAnswer: questionData.correctAnswer || 'A',
-    explanation: questionData.explanation || '',
-    subject: questionData.subject || 'General Knowledge',
-    topic: questionData.topic || '',
-    difficulty: questionData.difficulty || 'Medium',
-    marks: Number(questionData.marks) || 2,
-  };
+    ];
+    updatePayload.correctAnswer = questionData.correctAnswer || 'A';
+    updatePayload.explanation = questionData.explanation || '';
+    updatePayload.subject = questionData.subject || 'General Knowledge';
+    updatePayload.topic = questionData.topic || '';
+    updatePayload.difficulty = questionData.difficulty || 'Medium';
+    updatePayload.marks = questionData.marks !== undefined ? Number(questionData.marks) : 2;
+  } else {
+    updatePayload.id = qId;
+    updatePayload.testId = questionData.testId;
+    if (questionData.question !== undefined) updatePayload.question = questionData.question;
+    if (questionData.imageUrl !== undefined) updatePayload.imageUrl = questionData.imageUrl;
+    if (questionData.paragraphText !== undefined) updatePayload.paragraphText = questionData.paragraphText;
+    if (questionData.type !== undefined) updatePayload.type = questionData.type;
+    if (questionData.options !== undefined) updatePayload.options = questionData.options;
+    if (questionData.correctAnswer !== undefined) updatePayload.correctAnswer = questionData.correctAnswer;
+    if (questionData.explanation !== undefined) updatePayload.explanation = questionData.explanation;
+    if (questionData.subject !== undefined) updatePayload.subject = questionData.subject;
+    if (questionData.topic !== undefined) updatePayload.topic = questionData.topic;
+    if (questionData.difficulty !== undefined) updatePayload.difficulty = questionData.difficulty;
+    if (questionData.marks !== undefined) updatePayload.marks = Number(questionData.marks);
+  }
 
   try {
-    await setDoc(doc(db, 'questions', qId), fullQ, { merge: true });
+    await setDoc(doc(db, 'questions', qId), updatePayload, { merge: true });
 
-    // Update totalQuestions count on test document in Firestore
-    const qRef = collection(db, 'questions');
-    const qQuery = query(qRef, where('testId', '==', questionData.testId));
-    const snapshot = await getDocs(qQuery);
-    await saveTest({ id: questionData.testId, totalQuestions: snapshot.size });
+    if (!skipTestTotalUpdate) {
+      // Update totalQuestions count on test document in Firestore
+      const qRef = collection(db, 'questions');
+      const qQuery = query(qRef, where('testId', '==', questionData.testId));
+      const snapshot = await getDocs(qQuery);
+      await saveTest({ id: questionData.testId, totalQuestions: snapshot.size });
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `questions/${qId}`);
     throw err;
   }
 
   return qId;
+}
+
+/**
+ * Save multiple questions in bulk for a test.
+ */
+export async function saveQuestionsBulk(questionsList: Partial<Question>[], testId: string): Promise<number> {
+  let count = 0;
+  const timestamp = Date.now();
+  for (let i = 0; i < questionsList.length; i++) {
+    const item = questionsList[i];
+    const uniqueId = item.id && !item.id.startsWith('temp-') 
+      ? item.id 
+      : `q-${timestamp}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+    
+    await saveQuestion({ ...item, id: uniqueId, testId }, true, true);
+    count++;
+  }
+
+  // Update test question count once
+  const qRef = collection(db, 'questions');
+  const qQuery = query(qRef, where('testId', '==', testId));
+  const snapshot = await getDocs(qQuery);
+  await saveTest({ id: testId, totalQuestions: snapshot.size });
+
+  return count;
+}
+
+/**
+ * Delete all questions for a specific test in a single operation.
+ */
+export async function deleteAllQuestionsByTestId(testId: string): Promise<void> {
+  try {
+    const qRef = collection(db, 'questions');
+    const qQuery = query(qRef, where('testId', '==', testId));
+    const snapshot = await getDocs(qQuery);
+
+    const deletePromises = snapshot.docs.map(qDoc => deleteDoc(doc(db, 'questions', qDoc.id)));
+    await Promise.all(deletePromises);
+
+    // Update totalQuestions count on test document to 0
+    await saveTest({ id: testId, totalQuestions: 0 });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `questions?testId=${testId}`);
+    throw err;
+  }
 }
 
 /**

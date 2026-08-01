@@ -3,8 +3,16 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { Question, Test, QuestionType, DifficultyLevel } from '../../types';
-import { subscribeToTests, subscribeToQuestionsByTestId, getAllQuestions, saveQuestion, deleteQuestion } from '../../firebase/services';
-import { Plus, Edit3, Trash2, HelpCircle, FileText, Check, X, Upload, Code } from 'lucide-react';
+import { 
+  subscribeToTests, 
+  subscribeToQuestionsByTestId, 
+  getAllQuestions, 
+  saveQuestion, 
+  saveQuestionsBulk, 
+  deleteQuestion, 
+  deleteAllQuestionsByTestId 
+} from '../../firebase/services';
+import { Plus, Edit3, Trash2, HelpCircle, FileText, Check, X, Upload, Code, AlertTriangle } from 'lucide-react';
 
 export const AdminQuestionsPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -20,6 +28,7 @@ export const AdminQuestionsPage: React.FC = () => {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingQ, setEditingQ] = useState<Partial<Question> | null>(null);
+  const [isSavingSingle, setIsSavingSingle] = useState(false);
 
   // Bulk Upload Modal State
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -27,6 +36,10 @@ export const AdminQuestionsPage: React.FC = () => {
   const [bulkJsonText, setBulkJsonText] = useState('');
   const [bulkError, setBulkError] = useState('');
   const [bulkSuccess, setBulkSuccess] = useState('');
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
+
+  // Bulk Delete State
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -92,19 +105,48 @@ export const AdminQuestionsPage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingQ || !editingQ.testId || !editingQ.question) return;
+    if (!editingQ || !editingQ.testId || !editingQ.question || isSavingSingle) return;
 
     try {
+      setIsSavingSingle(true);
       await saveQuestion(editingQ as any, !editingQ.id);
       setShowModal(false);
     } catch (err: any) {
       alert(err.message || 'Error saving question. Duplicate check failed.');
+    } finally {
+      setIsSavingSingle(false);
     }
   };
 
   const handleDelete = async (qId: string, testId: string) => {
     if (window.confirm('Delete this question permanently?')) {
       await deleteQuestion(qId, testId);
+    }
+  };
+
+  const handleDeleteAllQuestions = async () => {
+    if (!selectedTestId) {
+      alert('Please select a specific examination paper to delete all questions.');
+      return;
+    }
+    const currentTest = tests.find(t => t.id === selectedTestId);
+    const qCount = filteredQuestions.length;
+    if (qCount === 0) {
+      alert('There are no questions in this test to delete.');
+      return;
+    }
+
+    const confirmMsg = `⚠️ Delete ALL Questions?\n\nAre you sure you want to permanently delete ALL ${qCount} questions from "${currentTest?.title || 'Selected Test'}"?\n\nThis action cannot be undone!`;
+    if (window.confirm(confirmMsg)) {
+      try {
+        setIsDeletingAll(true);
+        await deleteAllQuestionsByTestId(selectedTestId);
+        alert(`Successfully deleted all ${qCount} questions from this test.`);
+      } catch (err: any) {
+        alert(err.message || 'Error deleting questions.');
+      } finally {
+        setIsDeletingAll(false);
+      }
     }
   };
 
@@ -145,6 +187,8 @@ export const AdminQuestionsPage: React.FC = () => {
 
   const handleBulkUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBulkSaving) return;
+
     setBulkError('');
     setBulkSuccess('');
 
@@ -159,36 +203,24 @@ export const AdminQuestionsPage: React.FC = () => {
     }
 
     try {
+      setIsBulkSaving(true);
       const parsed = JSON.parse(bulkJsonText);
       const items = Array.isArray(parsed) ? parsed : [parsed];
 
       if (items.length === 0) {
         setBulkError('No valid question items found in JSON.');
+        setIsBulkSaving(false);
         return;
       }
 
-      let count = 0;
-      for (const item of items) {
-        if (!item.question || !item.options) continue;
-
-        const newQ: Question = {
-          id: item.id || `q-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          testId: bulkTestId,
-          question: item.question,
-          type: item.type || 'single',
-          options: item.options,
-          correctAnswer: item.correctAnswer || 'A',
-          explanation: item.explanation || '',
-          subject: item.subject || 'General Knowledge',
-          topic: item.topic || '',
-          difficulty: item.difficulty || 'Medium',
-          marks: item.marks || 2,
-          imageUrl: item.imageUrl || undefined
-        };
-
-        await saveQuestion(newQ);
-        count++;
+      const validItems = items.filter((item: any) => item && item.question && item.options);
+      if (validItems.length === 0) {
+        setBulkError('No valid questions with question statements and options found in JSON.');
+        setIsBulkSaving(false);
+        return;
       }
+
+      const count = await saveQuestionsBulk(validItems, bulkTestId);
 
       setBulkSuccess(`Successfully added ${count} questions in bulk!`);
       setTimeout(() => {
@@ -197,7 +229,9 @@ export const AdminQuestionsPage: React.FC = () => {
         setBulkJsonText('');
       }, 1200);
     } catch (err: any) {
-      setBulkError('Invalid JSON format. Please double check brackets and quotes.');
+      setBulkError('Invalid JSON format or error saving questions. Please check brackets and quotes.');
+    } finally {
+      setIsBulkSaving(false);
     }
   };
 
@@ -220,7 +254,19 @@ export const AdminQuestionsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {selectedTestId && filteredQuestions.length > 0 && (
+              <button
+                onClick={handleDeleteAllQuestions}
+                disabled={isDeletingAll}
+                className="flex items-center gap-2 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/80 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition-all cursor-pointer disabled:opacity-50"
+                title="Delete all questions in the selected test at once"
+              >
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>{isDeletingAll ? 'Deleting All...' : `Delete All Questions (${filteredQuestions.length})`}</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setBulkTestId(selectedTestId || (tests[0]?.id || ''));
@@ -243,20 +289,30 @@ export const AdminQuestionsPage: React.FC = () => {
         </div>
 
         {/* Test Selector Dropdown */}
-        <div className="mb-6 flex items-center gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-          <label className="text-xs font-bold text-slate-400 uppercase shrink-0">Select Examination Paper:</label>
-          <select
-            value={selectedTestId}
-            onChange={e => setSelectedTestId(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm font-bold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 flex-1 max-w-md"
-          >
-            <option value="">All Tests ({questions.length} Total Qs)</option>
-            {tests.map(t => (
-              <option key={t.id} value={t.id}>
-                {t.title} ({questions.filter(q => q.testId === t.id).length} Qs)
-              </option>
-            ))}
-          </select>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+            <label className="text-xs font-bold text-slate-400 uppercase shrink-0">Select Examination Paper:</label>
+            <select
+              value={selectedTestId}
+              onChange={e => setSelectedTestId(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm font-bold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 flex-1 max-w-md"
+            >
+              <option value="">All Tests ({questions.length} Total Qs)</option>
+              {tests.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.title} ({questions.filter(q => q.testId === t.id).length} Qs)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedTestId && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400">
+                Total in this test: <strong className="text-purple-400 font-bold">{filteredQuestions.length}</strong> Qs
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Questions List */}
@@ -441,9 +497,10 @@ export const AdminQuestionsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25"
+                  disabled={isBulkSaving}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25 disabled:opacity-50"
                 >
-                  Import Questions
+                  {isBulkSaving ? 'Importing Questions...' : 'Import Questions'}
                 </button>
               </div>
             </form>
@@ -610,9 +667,10 @@ export const AdminQuestionsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25"
+                  disabled={isSavingSingle}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25 disabled:opacity-50"
                 >
-                  Save Question
+                  {isSavingSingle ? 'Saving Question...' : 'Save Question'}
                 </button>
               </div>
             </form>

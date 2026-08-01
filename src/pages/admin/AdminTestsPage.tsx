@@ -29,6 +29,7 @@ export const AdminTestsPage: React.FC = () => {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingTest, setEditingTest] = useState<Partial<Test> | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -70,13 +71,16 @@ export const AdminTestsPage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTest || !editingTest.title) return;
+    if (!editingTest || !editingTest.title || isSaving) return;
 
     try {
+      setIsSaving(true);
       await saveTest(editingTest, !editingTest.id);
       setShowModal(false);
     } catch (err: any) {
       alert(err.message || 'Error saving test. Duplicate check failed.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -343,9 +347,10 @@ export const AdminTestsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25"
+                  disabled={isSaving}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25 disabled:opacity-50"
                 >
-                  Save Test
+                  {isSaving ? 'Saving Paper...' : 'Save Test'}
                 </button>
               </div>
             </form>
