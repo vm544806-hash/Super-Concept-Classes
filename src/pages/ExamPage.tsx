@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Test, Question, UserResponse, StudentInfo, ExamResult } from '../types';
-import { getTestById, getQuestionsByTestId, submitTestResult } from '../firebase/services';
+import { getTestById, getQuestionsByTestId, submitTestResult, checkExistingAttempt } from '../firebase/services';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { QuestionPalette } from '../components/exam/QuestionPalette';
 import { QuestionCard } from '../components/exam/QuestionCard';
 import { SubmitModal } from '../components/exam/SubmitModal';
 import { calculateScoreAndStats } from '../utils/helpers';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Award, Home, ShieldAlert } from 'lucide-react';
 
 export const ExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,10 +16,11 @@ export const ExamPage: React.FC = () => {
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alreadySubmittedResult, setAlreadySubmittedResult] = useState<ExamResult | null>(null);
 
   // Student Info from session
   const [studentInfo, setStudentInfo] = useState<StudentInfo>({
-    name: 'Candidate',
+    name: localStorage.getItem('lastStudentName') || 'Candidate',
     language: 'English',
   });
 
@@ -37,13 +38,30 @@ export const ExamPage: React.FC = () => {
     const initExam = async () => {
       if (!id) return;
 
+      let currentInfo = studentInfo;
       // Read student info from session
       const savedInfoStr = sessionStorage.getItem(`exam_student_${id}`);
       if (savedInfoStr) {
         try {
-          setStudentInfo(JSON.parse(savedInfoStr));
+          currentInfo = JSON.parse(savedInfoStr);
+          setStudentInfo(currentInfo);
         } catch (e) {}
       }
+
+      // Check if candidate already attempted this test
+      try {
+        const existing = await checkExistingAttempt(
+          id,
+          currentInfo.name,
+          currentInfo.mobile,
+          currentInfo.email
+        );
+        if (existing) {
+          setAlreadySubmittedResult(existing);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
 
       try {
         const testData = await getTestById(id);
@@ -255,6 +273,60 @@ export const ExamPage: React.FC = () => {
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
         <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-3" />
         <p className="text-sm font-semibold">Loading Examination Workspace...</p>
+      </div>
+    );
+  }
+
+  if (alreadySubmittedResult) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-amber-500/30 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-black text-white mb-2">Examination Already Attempted</h2>
+          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            Candidate <strong className="text-amber-400">{alreadySubmittedResult.studentName}</strong> has already completed and submitted answers for this test paper on{' '}
+            {new Date(alreadySubmittedResult.submittedAt || Date.now()).toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}.
+            Re-taking tests is strictly disabled to ensure single-attempt exam rules.
+          </p>
+
+          <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700 mb-6 text-left space-y-1.5 text-xs">
+            <div className="flex justify-between text-slate-300">
+              <span>Score Achieved:</span>
+              <strong className="text-emerald-400">{alreadySubmittedResult.score} / {alreadySubmittedResult.totalMarks} Marks</strong>
+            </div>
+            <div className="flex justify-between text-slate-300">
+              <span>Percentage:</span>
+              <strong className="text-blue-400">{alreadySubmittedResult.percentage}%</strong>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                sessionStorage.setItem('last_exam_result', JSON.stringify(alreadySubmittedResult));
+                navigate('/result');
+              }}
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Award className="w-4 h-4" />
+              <span>View Your Score Card</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/')}
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Home className="w-4 h-4" />
+              <span>Return to Homepage</span>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

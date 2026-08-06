@@ -654,12 +654,71 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
   try {
     await setDoc(doc(db, 'results', result.id), result);
     await setDoc(doc(db, 'leaderboard', lbEntry.id), lbEntry);
+
+    // Save attempt status to localStorage for instant local detection
+    localStorage.setItem(`completed_test_${result.testId}`, JSON.stringify(result));
+    if (result.studentName) {
+      localStorage.setItem(`completed_cand_${result.testId}_${result.studentName.trim().toLowerCase()}`, JSON.stringify(result));
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `results/${result.id}`);
     throw err;
   }
 
   return result.id;
+}
+
+/**
+ * Check if a candidate (by local storage or by Name / Mobile / Email in Firestore) has already attempted a test.
+ */
+export async function checkExistingAttempt(
+  testId: string,
+  studentName?: string,
+  studentMobile?: string,
+  studentEmail?: string
+): Promise<ExamResult | null> {
+  // 1. Check Local Storage
+  const localSaved = localStorage.getItem(`completed_test_${testId}`);
+  if (localSaved) {
+    try {
+      const parsed = JSON.parse(localSaved);
+      if (parsed && parsed.testId === testId) {
+        return parsed as ExamResult;
+      }
+    } catch (e) {}
+  }
+
+  const normName = studentName?.trim().toLowerCase();
+  const normMobile = studentMobile?.trim();
+  const normEmail = studentEmail?.trim().toLowerCase();
+
+  if (normName) {
+    const candSaved = localStorage.getItem(`completed_cand_${testId}_${normName}`);
+    if (candSaved) {
+      try {
+        const parsed = JSON.parse(candSaved);
+        if (parsed && parsed.testId === testId) return parsed as ExamResult;
+      } catch (e) {}
+    }
+  }
+
+  // 2. Query Firestore results
+  const allResults = await getResults();
+  for (const r of allResults) {
+    if (r.testId !== testId) continue;
+
+    if (normName && r.studentName && r.studentName.trim().toLowerCase() === normName) {
+      return r;
+    }
+    if (normMobile && r.studentMobile && r.studentMobile.trim() === normMobile) {
+      return r;
+    }
+    if (normEmail && r.studentEmail && r.studentEmail.trim().toLowerCase() === normEmail) {
+      return r;
+    }
+  }
+
+  return null;
 }
 
 export async function getResults(): Promise<ExamResult[]> {

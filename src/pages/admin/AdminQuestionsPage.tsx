@@ -14,6 +14,8 @@ import {
 } from '../../firebase/services';
 import { Plus, Edit3, Trash2, HelpCircle, FileText, Check, X, Upload, Code, AlertTriangle } from 'lucide-react';
 
+import { normalizeQuestionJSON } from '../../utils/helpers';
+
 export const AdminQuestionsPage: React.FC = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -213,16 +215,26 @@ export const AdminQuestionsPage: React.FC = () => {
         return;
       }
 
-      const validItems = items.filter((item: any) => item && item.question && item.options);
-      if (validItems.length === 0) {
-        setBulkError('No valid questions with question statements and options found in JSON.');
+      const validList: Partial<Question>[] = [];
+      for (const rawItem of items) {
+        const norm = normalizeQuestionJSON(rawItem, bulkTestId);
+        if (norm && norm.question) {
+          validList.push(norm);
+        }
+      }
+
+      if (validList.length === 0) {
+        setBulkError('No valid question statements found in JSON. Please make sure each item has a question statement and option choices.');
         setIsBulkSaving(false);
         return;
       }
 
-      const count = await saveQuestionsBulk(validItems, bulkTestId);
+      const count = await saveQuestionsBulk(validList, bulkTestId);
 
-      setBulkSuccess(`Successfully added ${count} questions in bulk!`);
+      // Instantly switch view to the target examination paper
+      setSelectedTestId(bulkTestId);
+
+      setBulkSuccess(`Successfully added ${count} question(s) to this examination paper!`);
       setTimeout(() => {
         setShowBulkModal(false);
         setBulkSuccess('');

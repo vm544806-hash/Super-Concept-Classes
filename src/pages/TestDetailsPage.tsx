@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Test, StudentInfo } from '../types';
-import { subscribeToTests } from '../firebase/services';
+import { Test, StudentInfo, ExamResult } from '../types';
+import { subscribeToTests, checkExistingAttempt } from '../firebase/services';
 import { 
   Clock, 
   HelpCircle, 
@@ -15,7 +15,9 @@ import {
   Globe, 
   ArrowLeft,
   ShieldCheck,
-  X
+  X,
+  FileCheck,
+  Award as AwardIcon
 } from 'lucide-react';
 import { getDifficultyColor } from '../utils/helpers';
 
@@ -25,6 +27,7 @@ export const TestDetailsPage: React.FC = () => {
 
   const [test, setTest] = useState<Test | null>(null);
   const [loading, setLoading] = useState(true);
+  const [existingResult, setExistingResult] = useState<ExamResult | null>(null);
 
   // Modal State before start
   const [showStartModal, setShowStartModal] = useState(false);
@@ -35,6 +38,7 @@ export const TestDetailsPage: React.FC = () => {
     language: 'English',
   });
   const [errorMsg, setErrorMsg] = useState('');
+  const [checkingAttempt, setCheckingAttempt] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -44,26 +48,69 @@ export const TestDetailsPage: React.FC = () => {
       setLoading(false);
     }, false);
 
+    // Check if device/student already attempted this test
+    checkExistingAttempt(id, studentInfo.name, studentInfo.mobile, studentInfo.email)
+      .then(res => {
+        if (res) setExistingResult(res);
+      })
+      .catch(() => {});
+
     return () => unsub();
   }, [id]);
 
-  const handleStartExam = (e: React.FormEvent) => {
+  const handleStartExam = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!test) return;
+
     if (!studentInfo.name.trim()) {
       setErrorMsg('Candidate Name is required to start the test.');
       return;
     }
 
-    // Save to localStorage for convenience
-    localStorage.setItem('lastStudentName', studentInfo.name.trim());
-    if (studentInfo.mobile) localStorage.setItem('lastStudentMobile', studentInfo.mobile.trim());
-    if (studentInfo.email) localStorage.setItem('lastStudentEmail', studentInfo.email.trim());
+    setCheckingAttempt(true);
+    setErrorMsg('');
 
-    // Store active candidate info in sessionStorage
-    sessionStorage.setItem(`exam_student_${test?.id}`, JSON.stringify(studentInfo));
+    try {
+      // Check Firestore & local records for duplicate candidate attempt
+      const attempt = await checkExistingAttempt(
+        test.id,
+        studentInfo.name,
+        studentInfo.mobile,
+        studentInfo.email
+      );
 
-    // Navigate to Exam Page
-    navigate(`/exam/${test?.id}`);
+      if (attempt) {
+        setExistingResult(attempt);
+        setErrorMsg(`Candidate "${studentInfo.name}" has ALREADY completed this examination. Each student is allowed ONLY 1 attempt per test.`);
+        setCheckingAttempt(false);
+        return;
+      }
+
+      // Save to localStorage for convenience
+      localStorage.setItem('lastStudentName', studentInfo.name.trim());
+      if (studentInfo.mobile) localStorage.setItem('lastStudentMobile', studentInfo.mobile.trim());
+      if (studentInfo.email) localStorage.setItem('lastStudentEmail', studentInfo.email.trim());
+
+      // Store active candidate info in sessionStorage
+      sessionStorage.setItem(`exam_student_${test.id}`, JSON.stringify(studentInfo));
+
+      // Navigate to Exam Page
+      navigate(`/exam/${test.id}`);
+    } catch (err) {
+      console.error('Error checking attempt:', err);
+      // Proceed if non-blocking
+      sessionStorage.setItem(`exam_student_${test.id}`, JSON.stringify(studentInfo));
+      navigate(`/exam/${test.id}`);
+    } finally {
+      setCheckingAttempt(false);
+    }
+  };
+
+  const handleViewExistingResult = () => {
+    if (existingResult) {
+      sessionStorage.setItem('last_exam_result', JSON.stringify(existingResult));
+      navigate('/result');
+    }
   };
 
   if (loading) {
@@ -179,14 +226,50 @@ export const TestDetailsPage: React.FC = () => {
               </ul>
             </div>
 
-            {/* Large Start Test Button */}
-            <button
-              onClick={() => setShowStartModal(true)}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
-            >
-              <Play className="w-6 h-6 fill-white" />
-              <span>Start Examination Now</span>
-            </button>
+            {/* Already Attempted Warning Banner */}
+            {existingResult ? (
+              <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-900 dark:text-amber-200">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
+                    <FileCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm sm:text-base">
+                      Examination Already Completed (1/1 Attempt Used)
+                    </h4>
+                    <p className="text-xs sm:text-sm mt-1 text-amber-800 dark:text-amber-300 leading-relaxed">
+                      Candidate <strong>"{existingResult.studentName}"</strong> has already completed this exam paper on{' '}
+                      {new Date(existingResult.submittedAt || Date.now()).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}{' '}
+                      with a score of <strong>{existingResult.score}/{existingResult.totalMarks}</strong> ({existingResult.percentage}%).
+                      Re-attempting is strictly restricted to maintain test integrity.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Large Start Test / View Scorecard Button */}
+            {existingResult ? (
+              <button
+                onClick={handleViewExistingResult}
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
+              >
+                <AwardIcon className="w-6 h-6 text-white" />
+                <span>View Your Score Card & Answer Key</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowStartModal(true)}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
+              >
+                <Play className="w-6 h-6 fill-white" />
+                <span>Start Examination Now</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -299,10 +382,17 @@ export const TestDetailsPage: React.FC = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2"
+                  disabled={checkingAttempt}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Begin Test Now</span>
+                  {checkingAttempt ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>Begin Test Now</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

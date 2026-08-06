@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Test } from '../../types';
-import { Clock, HelpCircle, Award, Play, Flame, Star, AlertCircle } from 'lucide-react';
+import { Clock, HelpCircle, Award, Play, Flame, Star, AlertCircle, CheckCircle } from 'lucide-react';
 import { getDifficultyColor } from '../../utils/helpers';
 
 interface TestCardProps {
@@ -11,6 +11,8 @@ interface TestCardProps {
 export const TestCard: React.FC<TestCardProps> = ({ test }) => {
   // Fallback image if IMGBB or custom image fails or is empty
   const fallbackImage = 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=600&q=80';
+
+  const isCompletedLocally = !!localStorage.getItem(`completed_test_${test.id}`);
 
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1">
@@ -31,17 +33,25 @@ export const TestCard: React.FC<TestCardProps> = ({ test }) => {
           <span>{test.category}</span>
         </div>
 
-        {/* Popular / Featured Badges */}
+        {/* Popular / Featured / Attempted Badges */}
         <div className="absolute top-3 right-3 flex items-center gap-1">
-          {test.isPopular && (
-            <span className="flex items-center gap-1 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-2 py-0.5 rounded-md shadow uppercase">
-              <Flame className="w-3 h-3 fill-slate-950" /> Popular
+          {isCompletedLocally ? (
+            <span className="flex items-center gap-1 bg-emerald-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-md shadow uppercase">
+              <CheckCircle className="w-3 h-3" /> Attempted
             </span>
-          )}
-          {test.isFeatured && (
-            <span className="flex items-center gap-1 bg-purple-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-md shadow uppercase">
-              <Star className="w-3 h-3 fill-white" /> Featured
-            </span>
+          ) : (
+            <>
+              {test.isPopular && (
+                <span className="flex items-center gap-1 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-2 py-0.5 rounded-md shadow uppercase">
+                  <Flame className="w-3 h-3 fill-slate-950" /> Popular
+                </span>
+              )}
+              {test.isFeatured && (
+                <span className="flex items-center gap-1 bg-purple-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-md shadow uppercase">
+                  <Star className="w-3 h-3 fill-white" /> Featured
+                </span>
+              )}
+            </>
           )}
         </div>
       </Link>
@@ -110,9 +120,13 @@ export const TestCard: React.FC<TestCardProps> = ({ test }) => {
 
           <Link
             to={`/test/${test.id}`}
-            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-500/20 hover:scale-105 shrink-0"
+            className={`inline-flex items-center gap-1.5 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shrink-0 hover:scale-105 ${
+              isCompletedLocally
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+            }`}
           >
-            <span>Start Test</span>
+            <span>{isCompletedLocally ? 'View Result' : 'Start Test'}</span>
             <Play className="w-3.5 h-3.5 fill-white" />
           </Link>
         </div>
