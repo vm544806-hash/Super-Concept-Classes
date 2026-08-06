@@ -48,6 +48,8 @@ export interface Test {
   createdAt: string; // ISO string or firestore timestamp
   updatedAt?: string;
   attemptsCount?: number;
+  testVersion?: number; // Increments when admin modifies questions/re-enables exam
+  allowRetake?: boolean; // If true, allows students to attempt multiple times
 }
 
 export interface StudentInfo {
@@ -82,6 +84,7 @@ export interface ExamResult {
   timeTakenSeconds: number;
   totalDurationSeconds: number;
   submittedAt: string;
+  testVersion?: number;
   responses: Record<string, UserResponse>; // questionId -> UserResponse
   rank?: number;
 }

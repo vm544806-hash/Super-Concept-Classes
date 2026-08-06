@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { Test, CategoryType } from '../../types';
-import { subscribeToTests, saveTest, deleteTest } from '../../firebase/services';
+import { subscribeToTests, saveTest, deleteTest, resetTestAttempts } from '../../firebase/services';
 import { CATEGORIES } from '../../components/home/CategoryPills';
 import { 
   Plus, 
@@ -16,7 +16,11 @@ import {
   X, 
   Clock, 
   Award, 
-  Image as ImageIcon 
+  Image as ImageIcon,
+  RotateCcw,
+  RefreshCw,
+  Zap,
+  ShieldAlert
 } from 'lucide-react';
 
 export const AdminTestsPage: React.FC = () => {
@@ -30,6 +34,11 @@ export const AdminTestsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingTest, setEditingTest] = useState<Partial<Test> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Reset Attempts Modal
+  const [resetTargetTest, setResetTargetTest] = useState<Test | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -60,6 +69,8 @@ export const AdminTestsPage: React.FC = () => {
       isPublished: true,
       isPopular: false,
       isFeatured: false,
+      allowRetake: false,
+      testVersion: 1,
     });
     setShowModal(true);
   };
@@ -67,6 +78,28 @@ export const AdminTestsPage: React.FC = () => {
   const handleOpenEditModal = (t: Test) => {
     setEditingTest({ ...t });
     setShowModal(true);
+  };
+
+  const handleResetAttempts = async (clearAllData: boolean) => {
+    if (!resetTargetTest || isResetting) return;
+
+    try {
+      setIsResetting(true);
+      const newVer = await resetTestAttempts(resetTargetTest.id, clearAllData);
+      setResetSuccessMsg(
+        clearAllData 
+          ? `Cleared all past results! Test reset to Version ${newVer}.`
+          : `Started New Test Session (Version ${newVer})! Students who attempted older paper can now take this updated test paper today.`
+      );
+      setTimeout(() => {
+        setResetTargetTest(null);
+        setResetSuccessMsg('');
+      }, 2500);
+    } catch (e: any) {
+      alert(e.message || 'Error resetting test attempts.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -133,9 +166,20 @@ export const AdminTestsPage: React.FC = () => {
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-0.5 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold uppercase rounded">
-                      {test.category}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2.5 py-0.5 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold uppercase rounded">
+                        {test.category}
+                      </span>
+                      {test.allowRetake ? (
+                        <span className="px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold rounded">
+                          Multi-Attempt
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded">
+                          v{test.testVersion || 1}
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleTogglePublish(test)}
                       className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded cursor-pointer ${
@@ -181,7 +225,16 @@ export const AdminTestsPage: React.FC = () => {
                     <span>Manage Qs</span>
                   </button>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setResetTargetTest(test)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold text-amber-300 bg-amber-950/60 border border-amber-800/80 rounded-lg hover:bg-amber-900/80 cursor-pointer transition-all"
+                      title="Reset Student Attempts / Enable Re-take"
+                    >
+                      <RotateCcw className="w-3 h-3 text-amber-400" />
+                      <span>Reset Attempts</span>
+                    </button>
+
                     <button
                       onClick={() => handleOpenEditModal(test)}
                       className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-lg hover:bg-slate-700"
@@ -337,23 +390,118 @@ export const AdminTestsPage: React.FC = () => {
                 </label>
               </div>
 
+              <div className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-2xl space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingTest.allowRetake ?? false}
+                    onChange={e => setEditingTest({ ...editingTest, allowRetake: e.target.checked })}
+                    className="mt-0.5 rounded text-blue-500 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-white block">Allow Unlimited Retakes (बार-बार टेस्ट देने की अनुमति दें)</span>
+                    <span className="text-[11px] text-slate-400 leading-snug block">If enabled, students can attempt this test paper multiple times. If unchecked (default), students are limited to 1 attempt per paper version.</span>
+                  </div>
+                </label>
+              </div>
+
               <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl"
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25 disabled:opacity-50"
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/25 disabled:opacity-50 cursor-pointer"
                 >
                   {isSaving ? 'Saving Paper...' : 'Save Test'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Attempts Confirmation Modal */}
+      {resetTargetTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl relative">
+            <button
+              onClick={() => setResetTargetTest(null)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mb-4 border border-amber-500/20">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-xl font-black text-white mb-2">
+              Reset Attempts for Candidate Retakes
+            </h3>
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
+              Paper: <strong className="text-amber-300">{resetTargetTest.title}</strong> (Current Version: v{resetTargetTest.testVersion || 1})
+            </p>
+
+            {resetSuccessMsg ? (
+              <div className="p-4 bg-emerald-950 border border-emerald-800 text-emerald-200 text-xs font-bold rounded-2xl mb-4 text-center">
+                {resetSuccessMsg}
+              </div>
+            ) : null}
+
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              When you edit questions or prepare a new exam paper on an existing test slot, choose how to allow candidates to re-attempt:
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => handleResetAttempts(false)}
+                disabled={isResetting}
+                className="w-full p-4 bg-purple-900/40 hover:bg-purple-800/60 border border-purple-700/80 rounded-2xl text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center justify-between font-bold text-sm text-purple-200 mb-1">
+                  <span className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-purple-400 fill-purple-400" />
+                    Option 1: Start New Exam Session (v{(resetTargetTest.testVersion || 1) + 1})
+                  </span>
+                  <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800">RECOMMENDED</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-normal">
+                  Increments paper version to v{(resetTargetTest.testVersion || 1) + 1}. All students can attempt the test paper again today with new questions, while keeping past test result records intact in the system.
+                </p>
+              </button>
+
+              <button
+                onClick={() => handleResetAttempts(true)}
+                disabled={isResetting}
+                className="w-full p-4 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-800/80 rounded-2xl text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center justify-between font-bold text-sm text-rose-200 mb-1">
+                  <span className="flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                    Option 2: Delete All Previous Results & Reset
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 leading-normal">
+                  Completely erases all past result cards and leaderboard ranks for this test, allowing everyone to take it again from a blank slate.
+                </p>
+              </button>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800 text-right">
+              <button
+                type="button"
+                onClick={() => setResetTargetTest(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close / Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

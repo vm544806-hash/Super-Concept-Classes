@@ -10,9 +10,10 @@ import {
   saveQuestion, 
   saveQuestionsBulk, 
   deleteQuestion, 
-  deleteAllQuestionsByTestId 
+  deleteAllQuestionsByTestId,
+  resetTestAttempts
 } from '../../firebase/services';
-import { Plus, Edit3, Trash2, HelpCircle, FileText, Check, X, Upload, Code, AlertTriangle } from 'lucide-react';
+import { Plus, Edit3, Trash2, HelpCircle, FileText, Check, X, Upload, Code, AlertTriangle, RotateCcw, Zap } from 'lucide-react';
 
 import { normalizeQuestionJSON } from '../../utils/helpers';
 
@@ -39,6 +40,11 @@ export const AdminQuestionsPage: React.FC = () => {
   const [bulkError, setBulkError] = useState('');
   const [bulkSuccess, setBulkSuccess] = useState('');
   const [isBulkSaving, setIsBulkSaving] = useState(false);
+  const [bulkResetAttempts, setBulkResetAttempts] = useState(true);
+
+  // Reset Attempts State
+  const [isResettingCurrentTest, setIsResettingCurrentTest] = useState(false);
+  const [resetSuccessNotice, setResetSuccessNotice] = useState('');
 
   // Bulk Delete State
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -231,19 +237,50 @@ export const AdminQuestionsPage: React.FC = () => {
 
       const count = await saveQuestionsBulk(validList, bulkTestId);
 
+      // Auto-reset candidate attempts by incrementing version if requested
+      if (bulkResetAttempts) {
+        await resetTestAttempts(bulkTestId, false);
+      }
+
       // Instantly switch view to the target examination paper
       setSelectedTestId(bulkTestId);
 
-      setBulkSuccess(`Successfully added ${count} question(s) to this examination paper!`);
+      setBulkSuccess(
+        bulkResetAttempts
+          ? `Successfully added ${count} question(s) and reset student attempts (started new exam session)!`
+          : `Successfully added ${count} question(s) to this examination paper!`
+      );
       setTimeout(() => {
         setShowBulkModal(false);
         setBulkSuccess('');
         setBulkJsonText('');
-      }, 1200);
+      }, 1500);
     } catch (err: any) {
       setBulkError('Invalid JSON format or error saving questions. Please check brackets and quotes.');
     } finally {
       setIsBulkSaving(false);
+    }
+  };
+
+  const handleResetCurrentTestAttempts = async () => {
+    if (!selectedTestId) {
+      alert('Please select an examination paper to reset student attempts.');
+      return;
+    }
+    const currentTest = tests.find(t => t.id === selectedTestId);
+    if (!currentTest) return;
+
+    if (window.confirm(`🔄 Start New Exam Session for "${currentTest.title}"?\n\nThis will increment paper version to v${(currentTest.testVersion || 1) + 1} so all candidates who attempted this test yesterday can attempt the new test paper today!`)) {
+      try {
+        setIsResettingCurrentTest(true);
+        const newVer = await resetTestAttempts(selectedTestId, false);
+        setResetSuccessNotice(`Attempts reset! Paper is now Version v${newVer}. Students can now attempt this test paper today.`);
+        setTimeout(() => setResetSuccessNotice(''), 4000);
+      } catch (err: any) {
+        alert(err.message || 'Error resetting attempts.');
+      } finally {
+        setIsResettingCurrentTest(false);
+      }
     }
   };
 
@@ -267,6 +304,18 @@ export const AdminQuestionsPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {selectedTestId && (
+              <button
+                onClick={handleResetCurrentTestAttempts}
+                disabled={isResettingCurrentTest}
+                className="flex items-center gap-2 bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-800/80 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition-all cursor-pointer disabled:opacity-50"
+                title="Reset student attempts so candidates who took yesterday's paper can take today's new paper"
+              >
+                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <span>{isResettingCurrentTest ? 'Resetting...' : 'Reset Student Attempts'}</span>
+              </button>
+            )}
+
             {selectedTestId && filteredQuestions.length > 0 && (
               <button
                 onClick={handleDeleteAllQuestions}
@@ -326,6 +375,19 @@ export const AdminQuestionsPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Reset Success Notice */}
+        {resetSuccessNotice && (
+          <div className="mb-6 p-4 bg-emerald-950 border border-emerald-800 text-emerald-200 text-xs font-bold rounded-2xl flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-400" />
+              {resetSuccessNotice}
+            </span>
+            <button onClick={() => setResetSuccessNotice('')} className="p-1 text-emerald-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Questions List */}
         {loading ? (
@@ -497,6 +559,21 @@ export const AdminQuestionsPage: React.FC = () => {
                   placeholder='[&#10;  {&#10;    "question": "What is 2 + 2?",&#10;    "options": [&#10;      { "id": "A", "text": "3" },&#10;      { "id": "B", "text": "4" },&#10;      { "id": "C", "text": "5" },&#10;      { "id": "D", "text": "6" }&#10;    ],&#10;    "correctAnswer": "B"&#10;  }&#10;]'
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-purple-200 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkResetAttempts}
+                    onChange={e => setBulkResetAttempts(e.target.checked)}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-amber-300 block">Start New Exam Session (Increment Paper Version)</span>
+                    <span className="text-[11px] text-slate-400 leading-snug block">Allows candidates who attempted yesterday's test paper to re-attempt this new updated test paper today!</span>
+                  </div>
+                </label>
               </div>
 
               <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">

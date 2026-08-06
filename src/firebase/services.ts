@@ -633,6 +633,10 @@ export function subscribeToResults(callback: Callback<ExamResult[]>): () => void
  * Submit student test result permanently to Firestore.
  */
 export async function submitTestResult(result: ExamResult): Promise<string> {
+  const currentTest = memoryTests.find(t => t.id === result.testId) || await getTestById(result.testId);
+  const version = result.testVersion || currentTest?.testVersion || 1;
+  result.testVersion = version;
+
   const lbEntry: LeaderboardEntry = {
     id: `lb-${result.id}`,
     studentName: result.studentName,
@@ -645,7 +649,6 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
   };
 
   // Increment test attempt count on Firestore
-  const currentTest = memoryTests.find(t => t.id === result.testId);
   if (currentTest) {
     const updatedCount = (currentTest.attemptsCount || 0) + 1;
     await saveTest({ id: result.testId, attemptsCount: updatedCount });
@@ -655,10 +658,14 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
     await setDoc(doc(db, 'results', result.id), result);
     await setDoc(doc(db, 'leaderboard', lbEntry.id), lbEntry);
 
-    // Save attempt status to localStorage for instant local detection
+    // Save attempt status to localStorage for instant local detection with version
+    localStorage.setItem(`completed_test_${result.testId}_v${version}`, JSON.stringify(result));
     localStorage.setItem(`completed_test_${result.testId}`, JSON.stringify(result));
+
     if (result.studentName) {
-      localStorage.setItem(`completed_cand_${result.testId}_${result.studentName.trim().toLowerCase()}`, JSON.stringify(result));
+      const normName = result.studentName.trim().toLowerCase();
+      localStorage.setItem(`completed_cand_${result.testId}_${normName}_v${version}`, JSON.stringify(result));
+      localStorage.setItem(`completed_cand_${result.testId}_${normName}`, JSON.stringify(result));
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `results/${result.id}`);
@@ -669,7 +676,7 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
 }
 
 /**
- * Check if a candidate (by local storage or by Name / Mobile / Email in Firestore) has already attempted a test.
+ * Check if a candidate (by local storage or by Name / Mobile / Email in Firestore) has already attempted the CURRENT VERSION of a test.
  */
 export async function checkExistingAttempt(
   testId: string,
@@ -677,12 +684,21 @@ export async function checkExistingAttempt(
   studentMobile?: string,
   studentEmail?: string
 ): Promise<ExamResult | null> {
-  // 1. Check Local Storage
-  const localSaved = localStorage.getItem(`completed_test_${testId}`);
-  if (localSaved) {
+  const currentTest = memoryTests.find(t => t.id === testId) || await getTestById(testId);
+
+  // If retake is allowed globally for this test, skip single-attempt block!
+  if (currentTest?.allowRetake) {
+    return null;
+  }
+
+  const currentVersion = currentTest?.testVersion || 1;
+
+  // 1. Check Local Storage for current version
+  const localSavedVer = localStorage.getItem(`completed_test_${testId}_v${currentVersion}`);
+  if (localSavedVer) {
     try {
-      const parsed = JSON.parse(localSaved);
-      if (parsed && parsed.testId === testId) {
+      const parsed = JSON.parse(localSavedVer);
+      if (parsed && parsed.testId === testId && (parsed.testVersion || 1) === currentVersion) {
         return parsed as ExamResult;
       }
     } catch (e) {}
@@ -693,19 +709,25 @@ export async function checkExistingAttempt(
   const normEmail = studentEmail?.trim().toLowerCase();
 
   if (normName) {
-    const candSaved = localStorage.getItem(`completed_cand_${testId}_${normName}`);
-    if (candSaved) {
+    const candSavedVer = localStorage.getItem(`completed_cand_${testId}_${normName}_v${currentVersion}`);
+    if (candSavedVer) {
       try {
-        const parsed = JSON.parse(candSaved);
-        if (parsed && parsed.testId === testId) return parsed as ExamResult;
+        const parsed = JSON.parse(candSavedVer);
+        if (parsed && parsed.testId === testId && (parsed.testVersion || 1) === currentVersion) {
+          return parsed as ExamResult;
+        }
       } catch (e) {}
     }
   }
 
-  // 2. Query Firestore results
+  // 2. Query Firestore results for current version
   const allResults = await getResults();
   for (const r of allResults) {
     if (r.testId !== testId) continue;
+    const resVer = r.testVersion || 1;
+
+    // Ignore results from older test paper versions (e.g. before admin updated questions/reset attempts)
+    if (resVer !== currentVersion) continue;
 
     if (normName && r.studentName && r.studentName.trim().toLowerCase() === normName) {
       return r;
@@ -719,6 +741,33 @@ export async function checkExistingAttempt(
   }
 
   return null;
+}
+
+/**
+ * Reset student attempts for a test paper by incrementing its version (allowing re-attempts)
+ * and optionally wiping past results data.
+ */
+export async function resetTestAttempts(testId: string, clearAllResultsData: boolean = false): Promise<number> {
+  const currentTest = memoryTests.find(t => t.id === testId) || await getTestById(testId);
+  const currentVer = currentTest?.testVersion || 1;
+  const newVer = currentVer + 1;
+
+  await saveTest({
+    id: testId,
+    testVersion: newVer,
+    attemptsCount: clearAllResultsData ? 0 : (currentTest?.attemptsCount || 0),
+    updatedAt: new Date().toISOString()
+  });
+
+  if (clearAllResultsData) {
+    const allRes = await getResults();
+    const testRes = allRes.filter(r => r.testId === testId);
+    for (const r of testRes) {
+      await deleteResult(r.id);
+    }
+  }
+
+  return newVer;
 }
 
 export async function getResults(): Promise<ExamResult[]> {
