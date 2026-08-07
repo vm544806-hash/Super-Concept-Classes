@@ -18,6 +18,8 @@ import {
   Award
 } from 'lucide-react';
 
+import { DatabaseSyncCard } from '../../components/admin/DatabaseSyncCard';
+
 export const AdminDashboardPage: React.FC = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -90,6 +92,9 @@ export const AdminDashboardPage: React.FC = () => {
           <div className="py-16 text-center text-slate-500">Loading Dashboard Analytics...</div>
         ) : (
           <>
+            {/* Dual Database Sync Status Card */}
+            <DatabaseSyncCard />
+
             {/* Stat Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
               

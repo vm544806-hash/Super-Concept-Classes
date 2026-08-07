@@ -48,21 +48,6 @@ export const ExamPage: React.FC = () => {
         } catch (e) {}
       }
 
-      // Check if candidate already attempted this test
-      try {
-        const existing = await checkExistingAttempt(
-          id,
-          currentInfo.name,
-          currentInfo.mobile,
-          currentInfo.email
-        );
-        if (existing) {
-          setAlreadySubmittedResult(existing);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {}
-
       try {
         const testData = await getTestById(id);
         if (!testData) {
@@ -335,11 +320,11 @@ export const ExamPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 text-center">
         <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
-        <h2 className="text-2xl font-bold">No Questions Found</h2>
-        <p className="text-sm text-slate-400 mt-2 mb-6">This mock test does not have any active questions linked yet.</p>
+        <h2 className="text-2xl font-bold">No Questions Available.</h2>
+        <p className="text-sm text-slate-400 mt-2 mb-6">No real questions are available for this test in the database.</p>
         <button
           onClick={() => navigate('/')}
-          className="bg-blue-600 px-6 py-2.5 rounded-xl font-bold hover:bg-blue-500"
+          className="bg-blue-600 px-6 py-2.5 rounded-xl font-bold hover:bg-blue-500 cursor-pointer"
         >
           Return Home
         </button>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -9,13 +9,16 @@ import {
   Settings, 
   LogOut, 
   GraduationCap,
-  ExternalLink
+  ExternalLink,
+  Database
 } from 'lucide-react';
+import { SupabaseSetupModal } from './SupabaseSetupModal';
 
 export const AdminSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -72,6 +75,19 @@ export const AdminSidebar: React.FC = () => {
 
       {/* Footer controls */}
       <div className="p-4 border-t border-slate-800 space-y-2">
+        <button
+          onClick={() => setIsSupabaseModalOpen(true)}
+          className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-bold bg-slate-800/80 hover:bg-slate-800 text-emerald-400 hover:text-emerald-300 rounded-xl border border-slate-700/60 transition"
+        >
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-emerald-400" />
+            <span>Supabase Database</span>
+          </div>
+          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">
+            SQL
+          </span>
+        </button>
+
         <Link
           to="/"
           target="_blank"
@@ -90,6 +106,10 @@ export const AdminSidebar: React.FC = () => {
         </button>
       </div>
 
+      <SupabaseSetupModal 
+        isOpen={isSupabaseModalOpen} 
+        onClose={() => setIsSupabaseModalOpen(false)} 
+      />
     </aside>
   );
 };

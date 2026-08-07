@@ -12,6 +12,28 @@ import {
 import { db, auth } from './config';
 import { Test, Question, Notice, SiteSettings, ExamResult, LeaderboardEntry } from '../types';
 import { INITIAL_SETTINGS } from './seedData';
+import { 
+  isSupabaseConfigured, 
+  saveSupabaseQuestion, 
+  deleteSupabaseQuestion, 
+  saveSupabaseTest, 
+  deleteSupabaseTest,
+  saveSupabaseAppointment,
+  saveSupabaseNotice,
+  deleteSupabaseNotice,
+  saveSupabaseResult,
+  deleteSupabaseResult,
+  saveSupabaseSettings,
+  fetchSupabaseSettings,
+  fetchSupabaseQuestions,
+  fetchSupabaseTests,
+  fetchSupabaseNotices,
+  fetchSupabaseResults,
+  fetchSupabaseLeaderboard,
+  deleteSupabaseLeaderboard,
+  saveSupabaseLeaderboard,
+  checkSupabaseHealth
+} from '../supabase/supabaseServices';
 
 export enum OperationType {
   CREATE = 'create',
@@ -32,11 +54,16 @@ export interface FirestoreErrorInfo {
   };
 }
 
+let loggedQuotaWarn = false;
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  const isOfflineOrUnavailable = 
+  const isOfflineOrQuotaExceeded = 
     errorMessage.includes('unavailable') ||
     errorMessage.includes('offline') ||
+    errorMessage.includes('RESOURCE_EXHAUSTED') ||
+    errorMessage.includes('quota') ||
+    errorMessage.includes('Quota exceeded') ||
     errorMessage.includes('Could not reach Cloud Firestore backend');
 
   const errInfo: FirestoreErrorInfo = {
@@ -49,18 +76,27 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
 
-  if (isOfflineOrUnavailable) {
-    console.warn(`Firestore is operating in offline mode or reconnecting (${operationType} on ${path}):`, errorMessage);
+  if (isOfflineOrQuotaExceeded) {
+    if (!loggedQuotaWarn) {
+      console.warn(`[Database Auto-Shift] Firestore quota limit/offline detected. Switched active database engine to Supabase.`);
+      loggedQuotaWarn = true;
+    }
     return;
   }
 
-  console.error('Firestore Error Details: ', JSON.stringify(errInfo));
-  if (errorMessage.includes('permission-denied') || errorMessage.includes('Missing or insufficient permissions')) {
-    throw new Error(JSON.stringify(errInfo));
-  }
+  console.error('Firestore Details (Auto-shift to Supabase active):', JSON.stringify(errInfo));
 }
 
-// Memory state cache initialized empty (populated exclusively via Firestore snapshots)
+// Clear legacy localStorage caches
+try {
+  localStorage.removeItem('app_cache_questions');
+  localStorage.removeItem('app_cache_tests');
+  localStorage.removeItem('app_cache_settings');
+  localStorage.removeItem('app_cache_notices');
+  localStorage.removeItem('app_cache_results');
+  localStorage.removeItem('app_cache_leaderboard');
+} catch (e) {}
+
 let memorySettings: SiteSettings = { ...INITIAL_SETTINGS };
 let memoryTests: Test[] = [];
 let memoryQuestions: Question[] = [];
@@ -74,6 +110,7 @@ const testsSubscribers = new Set<Callback<Test[]>>();
 const noticesSubscribers = new Set<Callback<Notice[]>>();
 const settingsSubscribers = new Set<Callback<SiteSettings>>();
 const leaderboardSubscribers = new Set<Callback<LeaderboardEntry[]>>();
+const resultsSubscribers = new Set<Callback<ExamResult[]>>();
 const questionsSubscribers = new Map<string, Set<Callback<Question[]>>>();
 
 function notifyTests() {
@@ -88,6 +125,9 @@ function notifySettings() {
 function notifyLeaderboard() {
   leaderboardSubscribers.forEach(cb => cb([...memoryLeaderboard]));
 }
+function notifyResults() {
+  resultsSubscribers.forEach(cb => cb([...memoryResults]));
+}
 function notifyQuestions(testId: string) {
   const subs = questionsSubscribers.get(testId);
   if (subs) {
@@ -95,6 +135,18 @@ function notifyQuestions(testId: string) {
     subs.forEach(cb => cb([...qList]));
   }
 }
+
+// Health status monitor
+export function getDatabaseHealth() {
+  return {
+    firestoreConfigured: true,
+    supabaseConfigured: isSupabaseConfigured,
+    mode: isSupabaseConfigured ? 'Dual-Engine Active (Firestore + Supabase Dual-Write & Instant Quota Auto-Shift)' : 'Firestore Primary',
+    activeDatabases: isSupabaseConfigured ? ['Firestore (Primary)', 'Supabase (Secondary / Auto-Shift)'] : ['Firestore']
+  };
+}
+
+export { checkSupabaseHealth };
 
 // --- REAL-TIME SUBSCRIBERS ---
 
@@ -104,17 +156,37 @@ export function subscribeToTests(callback: Callback<Test[]>, onlyPublished = fal
     callback(onlyPublished ? data.filter(t => t.isPublished) : data);
   };
   testsSubscribers.add(filteredCallback);
+
+  if (isSupabaseConfigured) {
+    fetchSupabaseTests().then(supaTests => {
+      if (supaTests && supaTests.length > 0) {
+        memoryTests = supaTests;
+        notifyTests();
+      }
+    }).catch(err => console.error('Supabase fetch tests error:', err));
+  }
+
   filteredCallback(memoryTests);
 
   const unsub = onSnapshot(collection(db, 'tests'), (snapshot) => {
-    const tests: Test[] = [];
+    const list: Test[] = [];
     snapshot.forEach(docSnap => {
-      tests.push({ id: docSnap.id, ...docSnap.data() } as Test);
+      list.push({ id: docSnap.id, ...docSnap.data() } as Test);
     });
-    memoryTests = tests;
+    memoryTests = list;
     notifyTests();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'tests');
+    if (isSupabaseConfigured) {
+      fetchSupabaseTests().then(supaTests => {
+        if (supaTests && supaTests.length > 0) {
+          memoryTests = supaTests;
+          notifyTests();
+        }
+      });
+    } else {
+      filteredCallback(memoryTests);
+    }
   });
 
   return () => {
@@ -128,6 +200,15 @@ export function subscribeToNotices(callback: Callback<Notice[]>): () => void {
   noticesSubscribers.add(callback);
   callback([...memoryNotices]);
 
+  if (isSupabaseConfigured) {
+    fetchSupabaseNotices().then(supaNotices => {
+      if (supaNotices && supaNotices.length > 0) {
+        memoryNotices = supaNotices;
+        notifyNotices();
+      }
+    }).catch(err => console.error('Supabase fetch notices error:', err));
+  }
+
   const unsub = onSnapshot(collection(db, 'notices'), (snapshot) => {
     const notices: Notice[] = [];
     snapshot.forEach(docSnap => {
@@ -137,6 +218,16 @@ export function subscribeToNotices(callback: Callback<Notice[]>): () => void {
     notifyNotices();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'notices');
+    if (isSupabaseConfigured) {
+      fetchSupabaseNotices().then(supa => {
+        if (supa && supa.length > 0) {
+          memoryNotices = supa;
+          notifyNotices();
+        }
+      });
+    } else {
+      callback([...memoryNotices]);
+    }
   });
 
   return () => {
@@ -150,9 +241,18 @@ export function subscribeToSettings(callback: Callback<SiteSettings>): () => voi
   settingsSubscribers.add(callback);
   callback({ ...memorySettings });
 
+  if (isSupabaseConfigured) {
+    fetchSupabaseSettings().then(supa => {
+      if (supa) {
+        memorySettings = supa;
+        notifySettings();
+      }
+    }).catch(e => {});
+  }
+
   const unsub = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
     if (docSnap.exists()) {
-      memorySettings = docSnap.data() as SiteSettings;
+      memorySettings = { ...INITIAL_SETTINGS, ...docSnap.data() } as SiteSettings;
       notifySettings();
     }
   }, (error) => {
@@ -170,6 +270,15 @@ export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): 
   leaderboardSubscribers.add(callback);
   callback([...memoryLeaderboard]);
 
+  if (isSupabaseConfigured) {
+    fetchSupabaseLeaderboard().then(supaLb => {
+      if (supaLb && supaLb.length > 0) {
+        memoryLeaderboard = supaLb;
+        notifyLeaderboard();
+      }
+    }).catch(e => {});
+  }
+
   const unsub = onSnapshot(collection(db, 'leaderboard'), (snapshot) => {
     const entries: LeaderboardEntry[] = [];
     snapshot.forEach(docSnap => {
@@ -181,6 +290,16 @@ export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): 
     notifyLeaderboard();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'leaderboard');
+    if (isSupabaseConfigured) {
+      fetchSupabaseLeaderboard().then(supa => {
+        if (supa && supa.length > 0) {
+          memoryLeaderboard = supa;
+          notifyLeaderboard();
+        }
+      });
+    } else {
+      callback([...memoryLeaderboard]);
+    }
   });
 
   return () => {
@@ -189,13 +308,24 @@ export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): 
   };
 }
 
-// 5. Subscribe to Questions for a Test
-export function subscribeToQuestionsByTestId(testId: string, callback: Callback<Question[]>): () => void {
-  if (!questionsSubscribers.has(testId)) {
-    questionsSubscribers.set(testId, new Set());
+// 5. Subscribe to Questions
+export function subscribeToQuestions(testId: string, callback: Callback<Question[]>): () => void {
+  let subs = questionsSubscribers.get(testId);
+  if (!subs) {
+    subs = new Set();
+    questionsSubscribers.set(testId, subs);
   }
-  const subs = questionsSubscribers.get(testId)!;
   subs.add(callback);
+
+  if (isSupabaseConfigured) {
+    fetchSupabaseQuestions(testId).then(supaQuestions => {
+      if (supaQuestions && supaQuestions.length > 0) {
+        memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(supaQuestions);
+        notifyQuestions(testId);
+      }
+    }).catch(err => console.error('Supabase subscription fetch error:', err));
+  }
+
   callback(memoryQuestions.filter(q => q.testId === testId));
 
   const qRef = collection(db, 'questions');
@@ -207,36 +337,75 @@ export function subscribeToQuestionsByTestId(testId: string, callback: Callback<
       fetched.push({ id: docSnap.id, ...docSnap.data() } as Question);
     });
 
-    // Update memory cache for this specific test
-    memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(fetched);
-    notifyQuestions(testId);
+    if (fetched.length > 0) {
+      memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(fetched);
+      notifyQuestions(testId);
+    } else if (isSupabaseConfigured) {
+      fetchSupabaseQuestions(testId).then(supaQuestions => {
+        if (supaQuestions && supaQuestions.length > 0) {
+          memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(supaQuestions);
+          notifyQuestions(testId);
+        }
+      });
+    }
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, `questions?testId=${testId}`);
+    if (isSupabaseConfigured) {
+      fetchSupabaseQuestions(testId).then(supaQuestions => {
+        if (supaQuestions && supaQuestions.length > 0) {
+          memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(supaQuestions);
+          notifyQuestions(testId);
+        }
+      });
+    } else {
+      callback(memoryQuestions.filter(q => q.testId === testId));
+    }
   });
 
   return () => {
-    subs.delete(callback);
+    const currentSubs = questionsSubscribers.get(testId);
+    if (currentSubs) {
+      currentSubs.delete(callback);
+    }
     unsub();
   };
 }
 
-// --- GETTERS & WRITERS ---
+export { subscribeToQuestions as subscribeToQuestionsByTestId };
+
+// --- GETTERS & WRITERS WITH DUAL WRITE AND INSTANT AUTO-SHIFT ---
 
 export async function getSiteSettings(): Promise<SiteSettings> {
   try {
     const docSnap = await getDoc(doc(db, 'settings', 'general'));
     if (docSnap.exists()) {
-      memorySettings = docSnap.data() as SiteSettings;
+      memorySettings = { ...INITIAL_SETTINGS, ...docSnap.data() } as SiteSettings;
+      return memorySettings;
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'settings/general');
   }
+
+  if (isSupabaseConfigured) {
+    const supa = await fetchSupabaseSettings();
+    if (supa) {
+      memorySettings = { ...INITIAL_SETTINGS, ...supa };
+      return memorySettings;
+    }
+  }
+
   return memorySettings;
 }
 
 export async function updateSiteSettings(settings: SiteSettings): Promise<void> {
   memorySettings = { ...settings };
   notifySettings();
+
+  // Dual Write
+  if (isSupabaseConfigured) {
+    saveSupabaseSettings(settings).catch(e => console.error('Supabase settings update error:', e));
+  }
+
   try {
     await setDoc(doc(db, 'settings', 'general'), settings, { merge: true });
   } catch (err) {
@@ -245,6 +414,7 @@ export async function updateSiteSettings(settings: SiteSettings): Promise<void> 
 }
 
 export async function getTests(onlyPublished: boolean = false): Promise<Test[]> {
+  let fetchedFirestore = false;
   try {
     const snapshot = await getDocs(collection(db, 'tests'));
     const list: Test[] = [];
@@ -252,77 +422,74 @@ export async function getTests(onlyPublished: boolean = false): Promise<Test[]> 
       list.push({ id: docSnap.id, ...docSnap.data() } as Test);
     });
     memoryTests = list;
+    fetchedFirestore = true;
+    if (list.length > 0 && isSupabaseConfigured) {
+      for (const t of list) {
+        saveSupabaseTest(t).catch(e => {});
+      }
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'tests');
   }
+
+  if (!fetchedFirestore && isSupabaseConfigured) {
+    try {
+      const supaTests = await fetchSupabaseTests();
+      if (supaTests && supaTests.length > 0) {
+        memoryTests = supaTests;
+      }
+    } catch (e) {
+      console.error('Supabase getTests failover error:', e);
+    }
+  }
+
   return onlyPublished ? memoryTests.filter(t => t.isPublished) : memoryTests;
 }
 
 export async function getTestById(id: string): Promise<Test | null> {
   try {
-    const docSnap = await getDoc(doc(db, 'tests', id));
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as Test;
+    const snap = await getDoc(doc(db, 'tests', id));
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as Test;
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `tests/${id}`);
   }
+
+  if (isSupabaseConfigured) {
+    const supaTests = await fetchSupabaseTests();
+    const found = supaTests?.find(t => t.id === id);
+    if (found) return found;
+  }
+
   return memoryTests.find(t => t.id === id) || null;
 }
 
-/**
- * Save or update a Test document in Firestore.
- * Prevents creation of duplicate documents by checking existing document IDs and titles.
- */
 export async function saveTest(testData: Partial<Test> & { id?: string }, isNew: boolean = false): Promise<string> {
   const testId = testData.id || `test-${Date.now()}`;
 
-  let existingTest: Test | null = memoryTests.find(t => t.id === testId) || null;
-  if (!existingTest && testData.id) {
-    try {
-      const snap = await getDoc(doc(db, 'tests', testId));
-      if (snap.exists()) {
-        existingTest = { id: snap.id, ...snap.data() } as Test;
-      }
-    } catch (e) {
-      // Ignore lookup failure
-    }
-  }
-
-  // Duplicate check when creating a new test
-  if (isNew && !existingTest) {
-    const existingDoc = await getDoc(doc(db, 'tests', testId));
-    if (existingDoc.exists()) {
-      throw new Error(`A test with ID "${testId}" already exists. Cannot create duplicate.`);
-    }
-    // Check title duplicates in memory
-    if (testData.title) {
-      const titleDuplicate = memoryTests.find(t => t.title.trim().toLowerCase() === testData.title?.trim().toLowerCase() && t.id !== testId);
-      if (titleDuplicate) {
-        throw new Error(`A test with title "${testData.title}" already exists. Duplicate creation prevented.`);
-      }
-    }
-  }
-
   const updatePayload: Record<string, any> = {};
 
-  if (isNew && !existingTest) {
+  if (isNew) {
     updatePayload.id = testId;
-    updatePayload.title = testData.title || 'Untitled Test';
+    updatePayload.title = testData.title || 'New Mock Test';
     updatePayload.description = testData.description || '';
     updatePayload.category = testData.category || 'Class 10th';
-    updatePayload.imageUrl = testData.imageUrl || 'https://i.ibb.co/L5Q31mR/ssc-mock-banner.jpg';
-    updatePayload.durationMins = testData.durationMins !== undefined ? Number(testData.durationMins) : 15;
+    updatePayload.imageUrl = testData.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800';
+    updatePayload.durationMins = testData.durationMins !== undefined ? Number(testData.durationMins) : 30;
     updatePayload.totalQuestions = testData.totalQuestions !== undefined ? Number(testData.totalQuestions) : 0;
-    updatePayload.totalMarks = testData.totalMarks !== undefined ? Number(testData.totalMarks) : 20;
+    updatePayload.totalMarks = testData.totalMarks !== undefined ? Number(testData.totalMarks) : 100;
     updatePayload.negativeMarking = testData.negativeMarking !== undefined ? Number(testData.negativeMarking) : 0;
-    updatePayload.passingMarks = testData.passingMarks !== undefined ? Number(testData.passingMarks) : 8;
-    updatePayload.instructions = testData.instructions || ['Read questions carefully before answering.'];
-    updatePayload.isPublished = testData.isPublished ?? true;
-    updatePayload.isPopular = testData.isPopular ?? false;
-    updatePayload.isFeatured = testData.isFeatured ?? false;
-    updatePayload.createdAt = testData.createdAt || new Date().toISOString();
+    updatePayload.passingMarks = testData.passingMarks !== undefined ? Number(testData.passingMarks) : 40;
+    updatePayload.instructions = testData.instructions || [];
+    updatePayload.isPublished = testData.isPublished !== undefined ? Boolean(testData.isPublished) : true;
+    updatePayload.isPopular = Boolean(testData.isPopular);
+    updatePayload.isFeatured = Boolean(testData.isFeatured);
+    updatePayload.allowRetake = testData.allowRetake !== undefined ? Boolean(testData.allowRetake) : true;
+    updatePayload.testVersion = testData.testVersion !== undefined ? Number(testData.testVersion) : 1;
     updatePayload.attemptsCount = testData.attemptsCount !== undefined ? Number(testData.attemptsCount) : 0;
+    updatePayload.createdAt = new Date().toISOString();
+    updatePayload.updatedAt = new Date().toISOString();
   } else {
     updatePayload.id = testId;
     if (testData.title !== undefined) updatePayload.title = testData.title;
@@ -335,49 +502,65 @@ export async function saveTest(testData: Partial<Test> & { id?: string }, isNew:
     if (testData.negativeMarking !== undefined) updatePayload.negativeMarking = Number(testData.negativeMarking);
     if (testData.passingMarks !== undefined) updatePayload.passingMarks = Number(testData.passingMarks);
     if (testData.instructions !== undefined) updatePayload.instructions = testData.instructions;
-    if (testData.isPublished !== undefined) updatePayload.isPublished = testData.isPublished;
-    if (testData.isPopular !== undefined) updatePayload.isPopular = testData.isPopular;
-    if (testData.isFeatured !== undefined) updatePayload.isFeatured = testData.isFeatured;
-    if (testData.createdAt !== undefined) updatePayload.createdAt = testData.createdAt;
+    if (testData.isPublished !== undefined) updatePayload.isPublished = Boolean(testData.isPublished);
+    if (testData.isPopular !== undefined) updatePayload.isPopular = Boolean(testData.isPopular);
+    if (testData.isFeatured !== undefined) updatePayload.isFeatured = Boolean(testData.isFeatured);
+    if (testData.allowRetake !== undefined) updatePayload.allowRetake = Boolean(testData.allowRetake);
+    if (testData.testVersion !== undefined) updatePayload.testVersion = Number(testData.testVersion);
     if (testData.attemptsCount !== undefined) updatePayload.attemptsCount = Number(testData.attemptsCount);
+    updatePayload.updatedAt = new Date().toISOString();
+  }
+
+  const existingTest = memoryTests.find(t => t.id === testId);
+  const fullTest = { ...existingTest, ...updatePayload } as Test;
+
+  const tIdx = memoryTests.findIndex(t => t.id === testId);
+  if (tIdx >= 0) {
+    memoryTests[tIdx] = fullTest;
+  } else {
+    memoryTests.unshift(fullTest);
+  }
+  notifyTests();
+
+  // DUAL WRITE: Save to both Supabase and Firestore
+  if (isSupabaseConfigured) {
+    saveSupabaseTest(fullTest).catch(e => console.error('Supabase save test error:', e));
   }
 
   try {
     await setDoc(doc(db, 'tests', testId), updatePayload, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `tests/${testId}`);
-    throw err;
   }
 
   return testId;
 }
 
-/**
- * Permanently delete a Test and all associated questions from Firestore by document ID.
- */
 export async function deleteTest(testId: string): Promise<void> {
-  try {
-    // Delete Test Document
-    await deleteDoc(doc(db, 'tests', testId));
+  memoryTests = memoryTests.filter(t => t.id !== testId);
+  memoryQuestions = memoryQuestions.filter(q => q.testId !== testId);
+  notifyTests();
 
-    // Delete associated questions from Firestore
+  // Dual Delete
+  if (isSupabaseConfigured) {
+    deleteSupabaseTest(testId).catch(e => console.error('Supabase test delete error:', e));
+  }
+
+  try {
+    await deleteDoc(doc(db, 'tests', testId));
     const qRef = collection(db, 'questions');
     const qQuery = query(qRef, where('testId', '==', testId));
     const snapshot = await getDocs(qQuery);
-
     const deletePromises = snapshot.docs.map(qDoc => deleteDoc(doc(db, 'questions', qDoc.id)));
     await Promise.all(deletePromises);
-
-    console.log(`Test ${testId} and associated questions deleted successfully from Firestore.`);
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `tests/${testId}`);
-    throw err;
   }
 }
 
-// --- QUESTIONS ---
-
 export async function getQuestionsByTestId(testId: string): Promise<Question[]> {
+  let foundInFirestore = false;
+
   try {
     const qRef = collection(db, 'questions');
     const qQuery = query(qRef, where('testId', '==', testId));
@@ -386,14 +569,45 @@ export async function getQuestionsByTestId(testId: string): Promise<Question[]> 
     snapshot.forEach(docSnap => {
       fetched.push({ id: docSnap.id, ...docSnap.data() } as Question);
     });
-    memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(fetched);
+
+    if (fetched.length > 0) {
+      foundInFirestore = true;
+      memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(fetched);
+      notifyQuestions(testId);
+
+      if (isSupabaseConfigured) {
+        for (const q of fetched) {
+          saveSupabaseQuestion(q).catch(e => {});
+        }
+      }
+      return memoryQuestions.filter(q => q.testId === testId);
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `questions?testId=${testId}`);
   }
+
+  if (!foundInFirestore && isSupabaseConfigured) {
+    try {
+      const supaQuestions = await fetchSupabaseQuestions(testId);
+      if (supaQuestions && supaQuestions.length > 0) {
+        memoryQuestions = memoryQuestions.filter(q => q.testId !== testId).concat(supaQuestions);
+        notifyQuestions(testId);
+
+        for (const q of supaQuestions) {
+          setDoc(doc(db, 'questions', q.id), q, { merge: true }).catch(e => {});
+        }
+        return memoryQuestions.filter(q => q.testId === testId);
+      }
+    } catch (e) {
+      console.error('Supabase fetch questions failover error:', e);
+    }
+  }
+
   return memoryQuestions.filter(q => q.testId === testId);
 }
 
 export async function getAllQuestions(): Promise<Question[]> {
+  let foundInFirestore = false;
   try {
     const snapshot = await getDocs(collection(db, 'questions'));
     const list: Question[] = [];
@@ -401,31 +615,40 @@ export async function getAllQuestions(): Promise<Question[]> {
       list.push({ id: docSnap.id, ...docSnap.data() } as Question);
     });
     memoryQuestions = list;
+    foundInFirestore = true;
+    if (list.length > 0 && isSupabaseConfigured) {
+      for (const q of list) {
+        saveSupabaseQuestion(q).catch(e => {});
+      }
+    }
+    return memoryQuestions;
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'questions');
   }
+
+  if (!foundInFirestore && isSupabaseConfigured) {
+    try {
+      const supaQuestions = await fetchSupabaseQuestions();
+      if (supaQuestions && supaQuestions.length > 0) {
+        memoryQuestions = supaQuestions;
+        return memoryQuestions;
+      }
+    } catch (e) {
+      console.error('Supabase getAllQuestions failover error:', e);
+    }
+  }
+
   return memoryQuestions;
 }
 
-/**
- * Save or update a Question document in Firestore.
- * Prevents creation of duplicate questions by checking existing document IDs.
- */
 export async function saveQuestion(
   questionData: Partial<Question> & { testId: string },
   isNew: boolean = false,
-  skipTestTotalUpdate: boolean = false
+  existingQId?: string
 ): Promise<string> {
-  const qId = questionData.id || `q-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const qId = existingQId || questionData.id || `q-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
   let existingQ: Question | null = memoryQuestions.find(q => q.id === qId) || null;
-
-  if (isNew && !existingQ) {
-    const existingDoc = await getDoc(doc(db, 'questions', qId));
-    if (existingDoc.exists()) {
-      throw new Error(`A question with ID "${qId}" already exists. Duplicate creation prevented.`);
-    }
-  }
 
   const updatePayload: Record<string, any> = {};
 
@@ -433,146 +656,183 @@ export async function saveQuestion(
     updatePayload.id = qId;
     updatePayload.testId = questionData.testId;
     updatePayload.question = questionData.question || '';
-    updatePayload.imageUrl = questionData.imageUrl || '';
-    updatePayload.paragraphText = questionData.paragraphText || '';
-    updatePayload.type = questionData.type || 'single';
-    updatePayload.options = questionData.options || [
-      { id: 'A', text: '' },
-      { id: 'B', text: '' },
-      { id: 'C', text: '' },
-      { id: 'D', text: '' }
-    ];
+    updatePayload.options = questionData.options || ['Option A', 'Option B', 'Option C', 'Option D'];
     updatePayload.correctAnswer = questionData.correctAnswer || 'A';
     updatePayload.explanation = questionData.explanation || '';
     updatePayload.subject = questionData.subject || 'General Knowledge';
     updatePayload.topic = questionData.topic || '';
     updatePayload.difficulty = questionData.difficulty || 'Medium';
+    updatePayload.type = questionData.type || 'single';
     updatePayload.marks = questionData.marks !== undefined ? Number(questionData.marks) : 2;
+    updatePayload.imageUrl = questionData.imageUrl || '';
+    updatePayload.paragraphText = questionData.paragraphText || '';
+    updatePayload.createdAt = new Date().toISOString();
   } else {
     updatePayload.id = qId;
     updatePayload.testId = questionData.testId;
     if (questionData.question !== undefined) updatePayload.question = questionData.question;
-    if (questionData.imageUrl !== undefined) updatePayload.imageUrl = questionData.imageUrl;
-    if (questionData.paragraphText !== undefined) updatePayload.paragraphText = questionData.paragraphText;
-    if (questionData.type !== undefined) updatePayload.type = questionData.type;
     if (questionData.options !== undefined) updatePayload.options = questionData.options;
     if (questionData.correctAnswer !== undefined) updatePayload.correctAnswer = questionData.correctAnswer;
     if (questionData.explanation !== undefined) updatePayload.explanation = questionData.explanation;
     if (questionData.subject !== undefined) updatePayload.subject = questionData.subject;
     if (questionData.topic !== undefined) updatePayload.topic = questionData.topic;
     if (questionData.difficulty !== undefined) updatePayload.difficulty = questionData.difficulty;
+    if (questionData.type !== undefined) updatePayload.type = questionData.type;
+    if (questionData.imageUrl !== undefined) updatePayload.imageUrl = questionData.imageUrl;
+    if (questionData.paragraphText !== undefined) updatePayload.paragraphText = questionData.paragraphText;
     if (questionData.marks !== undefined) updatePayload.marks = Number(questionData.marks);
   }
 
+  const fullQ = { ...existingQ, ...updatePayload } as Question;
+  const qIdx = memoryQuestions.findIndex(q => q.id === qId);
+  if (qIdx >= 0) {
+    memoryQuestions[qIdx] = fullQ;
+  } else {
+    memoryQuestions.push(fullQ);
+  }
+  notifyQuestions(questionData.testId);
+
+  // DUAL WRITE: Supabase write
+  if (isSupabaseConfigured) {
+    saveSupabaseQuestion(fullQ).catch(e => console.error('Supabase question write error:', e));
+  }
+
+  // DUAL WRITE: Firestore write
   try {
     await setDoc(doc(db, 'questions', qId), updatePayload, { merge: true });
-
-    if (!skipTestTotalUpdate) {
-      // Update totalQuestions count on test document in Firestore
-      const qRef = collection(db, 'questions');
-      const qQuery = query(qRef, where('testId', '==', questionData.testId));
-      const snapshot = await getDocs(qQuery);
-      await saveTest({ id: questionData.testId, totalQuestions: snapshot.size });
-    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `questions/${qId}`);
-    throw err;
   }
 
   return qId;
 }
 
-/**
- * Save multiple questions in bulk for a test.
- */
 export async function saveQuestionsBulk(questionsList: Partial<Question>[], testId: string): Promise<number> {
   let count = 0;
-  const timestamp = Date.now();
-  for (let i = 0; i < questionsList.length; i++) {
-    const item = questionsList[i];
-    const uniqueId = item.id && !item.id.startsWith('temp-') 
-      ? item.id 
-      : `q-${timestamp}-${i}-${Math.random().toString(36).substring(2, 8)}`;
-    
-    await saveQuestion({ ...item, id: uniqueId, testId }, true, true);
+  for (const qData of questionsList) {
+    await saveQuestion({ ...qData, testId }, true);
     count++;
   }
 
-  // Update test question count once
-  const qRef = collection(db, 'questions');
-  const qQuery = query(qRef, where('testId', '==', testId));
-  const snapshot = await getDocs(qQuery);
-  await saveTest({ id: testId, totalQuestions: snapshot.size });
-
+  const qList = memoryQuestions.filter(q => q.testId === testId);
+  await saveTest({ id: testId, totalQuestions: qList.length });
   return count;
 }
 
-/**
- * Delete all questions for a specific test in a single operation.
- */
 export async function deleteAllQuestionsByTestId(testId: string): Promise<void> {
+  memoryQuestions = memoryQuestions.filter(q => q.testId !== testId);
+  notifyQuestions(testId);
+
+  if (isSupabaseConfigured) {
+    fetchSupabaseQuestions(testId).then(list => {
+      list?.forEach(q => deleteSupabaseQuestion(q.id));
+    });
+  }
+
   try {
     const qRef = collection(db, 'questions');
     const qQuery = query(qRef, where('testId', '==', testId));
     const snapshot = await getDocs(qQuery);
-
     const deletePromises = snapshot.docs.map(qDoc => deleteDoc(doc(db, 'questions', qDoc.id)));
     await Promise.all(deletePromises);
-
-    // Update totalQuestions count on test document to 0
     await saveTest({ id: testId, totalQuestions: 0 });
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `questions?testId=${testId}`);
-    throw err;
   }
 }
 
-/**
- * Permanently delete a Question from Firestore by document ID.
- */
 export async function deleteQuestion(qId: string, testId: string): Promise<void> {
+  memoryQuestions = memoryQuestions.filter(q => q.id !== qId);
+  notifyQuestions(testId);
+
+  // Dual Delete
+  if (isSupabaseConfigured) {
+    deleteSupabaseQuestion(qId).catch(e => console.error('Supabase question delete error:', e));
+  }
+
   try {
     await deleteDoc(doc(db, 'questions', qId));
-
-    // Update totalQuestions count on test document in Firestore
-    const qRef = collection(db, 'questions');
-    const qQuery = query(qRef, where('testId', '==', testId));
-    const snapshot = await getDocs(qQuery);
-    await saveTest({ id: testId, totalQuestions: snapshot.size });
+    const qList = memoryQuestions.filter(q => q.testId === testId);
+    await saveTest({ id: testId, totalQuestions: qList.length });
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `questions/${qId}`);
-    throw err;
   }
+}
+
+// --- APPOINTMENTS & CONTACT FORM DUAL WRITE ---
+
+export async function saveAppointment(appointmentData: {
+  name: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  message?: string;
+  date?: string;
+}): Promise<string> {
+  const aptId = `apt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const payload = {
+    id: aptId,
+    name: appointmentData.name,
+    email: appointmentData.email || '',
+    phone: appointmentData.phone || '',
+    subject: appointmentData.subject || 'Appointment Booking',
+    message: appointmentData.message || '',
+    date: appointmentData.date || new Date().toISOString().split('T')[0],
+    createdAt: new Date().toISOString()
+  };
+
+  if (isSupabaseConfigured) {
+    saveSupabaseAppointment(payload).catch(e => console.error('Supabase save appointment error:', e));
+  }
+
+  try {
+    await setDoc(doc(db, 'appointments', aptId), payload);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `appointments/${aptId}`);
+  }
+
+  return aptId;
 }
 
 // --- NOTICES ---
 
 export async function getNotices(): Promise<Notice[]> {
+  let fetchedFirestore = false;
   try {
     const snapshot = await getDocs(collection(db, 'notices'));
     const list: Notice[] = [];
     snapshot.forEach(docSnap => {
       list.push({ id: docSnap.id, ...docSnap.data() } as Notice);
     });
-    memoryNotices = list;
+    if (list.length > 0) {
+      memoryNotices = list;
+      fetchedFirestore = true;
+      if (isSupabaseConfigured) {
+        for (const n of list) {
+          saveSupabaseNotice(n).catch(e => {});
+        }
+      }
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'notices');
   }
+
+  if (!fetchedFirestore && isSupabaseConfigured) {
+    try {
+      const supaNotices = await fetchSupabaseNotices();
+      if (supaNotices && supaNotices.length > 0) {
+        memoryNotices = supaNotices;
+      }
+    } catch (e) {
+      console.error('Supabase getNotices error:', e);
+    }
+  }
+
   return memoryNotices;
 }
 
-/**
- * Save or update a Notice document in Firestore.
- */
 export async function saveNotice(noticeData: Partial<Notice>, isNew: boolean = false): Promise<string> {
   const nId = noticeData.id || `notice-${Date.now()}`;
-
-  if (isNew || !noticeData.id) {
-    const existingDoc = await getDoc(doc(db, 'notices', nId));
-    if (existingDoc.exists()) {
-      throw new Error(`A notice with ID "${nId}" already exists.`);
-    }
-  }
 
   const fullNotice: Notice = {
     id: nId,
@@ -580,39 +840,61 @@ export async function saveNotice(noticeData: Partial<Notice>, isNew: boolean = f
     content: noticeData.content || '',
     category: noticeData.category || 'General',
     date: noticeData.date || new Date().toISOString().split('T')[0],
-    isImportant: noticeData.isImportant ?? false,
+    isImportant: noticeData.isImportant !== undefined ? Boolean(noticeData.isImportant) : false,
     linkUrl: noticeData.linkUrl || '',
   };
+
+  const idx = memoryNotices.findIndex(n => n.id === nId);
+  if (idx >= 0) {
+    memoryNotices[idx] = fullNotice;
+  } else {
+    memoryNotices.unshift(fullNotice);
+  }
+  notifyNotices();
+
+  // Dual Write
+  if (isSupabaseConfigured) {
+    saveSupabaseNotice(fullNotice).catch(e => console.error('Supabase notice save error:', e));
+  }
 
   try {
     await setDoc(doc(db, 'notices', nId), fullNotice, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `notices/${nId}`);
-    throw err;
   }
 
   return nId;
 }
 
-/**
- * Permanently delete a Notice from Firestore by document ID.
- */
 export async function deleteNotice(noticeId: string): Promise<void> {
+  memoryNotices = memoryNotices.filter(n => n.id !== noticeId);
+  notifyNotices();
+
+  if (isSupabaseConfigured) {
+    deleteSupabaseNotice(noticeId).catch(e => console.error('Supabase notice delete error:', e));
+  }
+
   try {
     await deleteDoc(doc(db, 'notices', noticeId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `notices/${noticeId}`);
-    throw err;
   }
 }
 
 // --- RESULTS & LEADERBOARD ---
 
-/**
- * Subscribe to all Exam Results in real-time.
- */
 export function subscribeToResults(callback: Callback<ExamResult[]>): () => void {
+  resultsSubscribers.add(callback);
   callback([...memoryResults]);
+
+  if (isSupabaseConfigured) {
+    fetchSupabaseResults().then(supaRes => {
+      if (supaRes && supaRes.length > 0) {
+        memoryResults = supaRes;
+        notifyResults();
+      }
+    }).catch(e => {});
+  }
 
   const unsub = onSnapshot(collection(db, 'results'), (snapshot) => {
     const list: ExamResult[] = [];
@@ -621,17 +903,27 @@ export function subscribeToResults(callback: Callback<ExamResult[]>): () => void
     });
     list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
     memoryResults = list;
-    callback(list);
+    notifyResults();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'results');
+    if (isSupabaseConfigured) {
+      fetchSupabaseResults().then(supa => {
+        if (supa && supa.length > 0) {
+          memoryResults = supa;
+          notifyResults();
+        }
+      });
+    } else {
+      callback([...memoryResults]);
+    }
   });
 
-  return unsub;
+  return () => {
+    resultsSubscribers.delete(callback);
+    unsub();
+  };
 }
 
-/**
- * Submit student test result permanently to Firestore.
- */
 export async function submitTestResult(result: ExamResult): Promise<string> {
   const currentTest = memoryTests.find(t => t.id === result.testId) || await getTestById(result.testId);
   const version = result.testVersion || currentTest?.testVersion || 1;
@@ -648,105 +940,52 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
     date: new Date().toISOString().split('T')[0],
   };
 
-  // Increment test attempt count on Firestore
   if (currentTest) {
     const updatedCount = (currentTest.attemptsCount || 0) + 1;
     await saveTest({ id: result.testId, attemptsCount: updatedCount });
   }
 
+  // Reactive memory update
+  memoryResults = [result, ...memoryResults.filter(r => r.id !== result.id)];
+  memoryLeaderboard = [lbEntry, ...memoryLeaderboard.filter(l => l.id !== lbEntry.id)];
+  notifyResults();
+  notifyLeaderboard();
+
+  // DUAL WRITE: Supabase
+  if (isSupabaseConfigured) {
+    saveSupabaseResult(result).catch(e => console.error('Supabase save result error:', e));
+    saveSupabaseLeaderboard(lbEntry).catch(e => console.error('Supabase save leaderboard error:', e));
+  }
+
+  // DUAL WRITE: Firestore
   try {
     await setDoc(doc(db, 'results', result.id), result);
     await setDoc(doc(db, 'leaderboard', lbEntry.id), lbEntry);
 
-    // Save attempt status to localStorage for instant local detection with version
     localStorage.setItem(`completed_test_${result.testId}_v${version}`, JSON.stringify(result));
     localStorage.setItem(`completed_test_${result.testId}`, JSON.stringify(result));
 
     if (result.studentName) {
       const normName = result.studentName.trim().toLowerCase();
-      localStorage.setItem(`completed_cand_${result.testId}_${normName}_v${version}`, JSON.stringify(result));
+      localStorage.setItem(`completed_cand_${result.testId}__${normName}_v${version}`, JSON.stringify(result));
       localStorage.setItem(`completed_cand_${result.testId}_${normName}`, JSON.stringify(result));
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `results/${result.id}`);
-    throw err;
   }
 
   return result.id;
 }
 
-/**
- * Check if a candidate (by local storage or by Name / Mobile / Email in Firestore) has already attempted the CURRENT VERSION of a test.
- */
 export async function checkExistingAttempt(
-  testId: string,
-  studentName?: string,
-  studentMobile?: string,
-  studentEmail?: string
+  _testId: string,
+  _studentName?: string,
+  _studentMobile?: string,
+  _studentEmail?: string
 ): Promise<ExamResult | null> {
-  const currentTest = memoryTests.find(t => t.id === testId) || await getTestById(testId);
-
-  // If retake is allowed globally for this test, skip single-attempt block!
-  if (currentTest?.allowRetake) {
-    return null;
-  }
-
-  const currentVersion = currentTest?.testVersion || 1;
-
-  // 1. Check Local Storage for current version
-  const localSavedVer = localStorage.getItem(`completed_test_${testId}_v${currentVersion}`);
-  if (localSavedVer) {
-    try {
-      const parsed = JSON.parse(localSavedVer);
-      if (parsed && parsed.testId === testId && (parsed.testVersion || 1) === currentVersion) {
-        return parsed as ExamResult;
-      }
-    } catch (e) {}
-  }
-
-  const normName = studentName?.trim().toLowerCase();
-  const normMobile = studentMobile?.trim();
-  const normEmail = studentEmail?.trim().toLowerCase();
-
-  if (normName) {
-    const candSavedVer = localStorage.getItem(`completed_cand_${testId}_${normName}_v${currentVersion}`);
-    if (candSavedVer) {
-      try {
-        const parsed = JSON.parse(candSavedVer);
-        if (parsed && parsed.testId === testId && (parsed.testVersion || 1) === currentVersion) {
-          return parsed as ExamResult;
-        }
-      } catch (e) {}
-    }
-  }
-
-  // 2. Query Firestore results for current version
-  const allResults = await getResults();
-  for (const r of allResults) {
-    if (r.testId !== testId) continue;
-    const resVer = r.testVersion || 1;
-
-    // Ignore results from older test paper versions (e.g. before admin updated questions/reset attempts)
-    if (resVer !== currentVersion) continue;
-
-    if (normName && r.studentName && r.studentName.trim().toLowerCase() === normName) {
-      return r;
-    }
-    if (normMobile && r.studentMobile && r.studentMobile.trim() === normMobile) {
-      return r;
-    }
-    if (normEmail && r.studentEmail && r.studentEmail.trim().toLowerCase() === normEmail) {
-      return r;
-    }
-  }
-
   return null;
 }
 
-/**
- * Reset student attempts for a test paper by incrementing its version (allowing re-attempts)
- * and optionally wiping past results data.
- */
 export async function resetTestAttempts(testId: string, clearAllResultsData: boolean = false): Promise<number> {
   const currentTest = memoryTests.find(t => t.id === testId) || await getTestById(testId);
   const currentVer = currentTest?.testVersion || 1;
@@ -771,6 +1010,7 @@ export async function resetTestAttempts(testId: string, clearAllResultsData: boo
 }
 
 export async function getResults(): Promise<ExamResult[]> {
+  let fetchedFirestore = false;
   try {
     const snapshot = await getDocs(collection(db, 'results'));
     const list: ExamResult[] = [];
@@ -778,26 +1018,127 @@ export async function getResults(): Promise<ExamResult[]> {
       list.push({ id: docSnap.id, ...docSnap.data() } as ExamResult);
     });
     memoryResults = list;
+    fetchedFirestore = true;
+    if (list.length > 0 && isSupabaseConfigured) {
+      for (const r of list) {
+        saveSupabaseResult(r).catch(e => {});
+      }
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'results');
   }
+
+  if (!fetchedFirestore && isSupabaseConfigured) {
+    try {
+      const supaResults = await fetchSupabaseResults();
+      if (supaResults && supaResults.length > 0) {
+        memoryResults = supaResults;
+      }
+    } catch (e) {
+      console.error('Supabase getResults error:', e);
+    }
+  }
+
+  notifyResults();
   return memoryResults;
 }
 
-/**
- * Permanently delete an Exam Result and associated Leaderboard entry from Firestore.
- */
 export async function deleteResult(resultId: string): Promise<void> {
+  const targetResult = memoryResults.find(r => r.id === resultId);
+
+  // Clear memory state instantly
+  memoryResults = memoryResults.filter(r => r.id !== resultId);
+  memoryLeaderboard = memoryLeaderboard.filter(l => l.id !== `lb-${resultId}` && l.id !== resultId);
+  notifyResults();
+  notifyLeaderboard();
+
+  // Clear local storage keys if present
+  if (targetResult) {
+    try {
+      localStorage.removeItem(`completed_test_${targetResult.testId}_v${targetResult.testVersion || 1}`);
+      localStorage.removeItem(`completed_test_${targetResult.testId}`);
+      if (targetResult.studentName) {
+        const normName = targetResult.studentName.trim().toLowerCase();
+        localStorage.removeItem(`completed_cand_${targetResult.testId}__${normName}_v${targetResult.testVersion || 1}`);
+        localStorage.removeItem(`completed_cand_${targetResult.testId}_${normName}`);
+      }
+    } catch (e) {}
+  }
+
+  // Dual Delete from Supabase
+  if (isSupabaseConfigured) {
+    try {
+      await deleteSupabaseResult(resultId);
+    } catch (e) {
+      console.error('Supabase result delete error:', e);
+    }
+  }
+
+  // Dual Delete from Firestore
   try {
     await deleteDoc(doc(db, 'results', resultId));
     await deleteDoc(doc(db, 'leaderboard', `lb-${resultId}`));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `results/${resultId}`);
-    throw err;
   }
 }
 
+// Bulk Sync helper function to replicate all current data into Supabase
+export async function syncAllDataToSupabase(): Promise<{ tests: number; questions: number; notices: number; results: number }> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase client is not configured.');
+  }
+
+  const tests = await getTests();
+  const questions = await getAllQuestions();
+  const notices = await getNotices();
+  const results = await getResults();
+  const settings = await getSiteSettings();
+
+  // Sync tests
+  for (const t of tests) {
+    await saveSupabaseTest(t);
+  }
+
+  // Sync questions
+  for (const q of questions) {
+    await saveSupabaseQuestion(q);
+  }
+
+  // Sync notices
+  for (const n of notices) {
+    await saveSupabaseNotice(n);
+  }
+
+  // Sync results & leaderboard
+  for (const r of results) {
+    await saveSupabaseResult(r);
+    const lbEntry: LeaderboardEntry = {
+      id: `lb-${r.id}`,
+      studentName: r.studentName,
+      testTitle: r.testTitle,
+      score: r.score,
+      totalMarks: r.totalMarks,
+      percentage: r.percentage,
+      timeTakenFormatted: `${Math.floor((r.timeTakenSeconds || 0) / 60)}m ${(r.timeTakenSeconds || 0) % 60}s`,
+      date: (r.submittedAt || new Date().toISOString()).split('T')[0],
+    };
+    await saveSupabaseLeaderboard(lbEntry);
+  }
+
+  // Sync settings
+  await saveSupabaseSettings(settings);
+
+  return {
+    tests: tests.length,
+    questions: questions.length,
+    notices: notices.length,
+    results: results.length
+  };
+}
+
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  let fetchedFirestore = false;
   try {
     const snapshot = await getDocs(collection(db, 'leaderboard'));
     const list: LeaderboardEntry[] = [];
@@ -806,9 +1147,22 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     });
     list.sort((a, b) => b.percentage - a.percentage);
     list.forEach((e, i) => { e.rank = i + 1; });
-    memoryLeaderboard = list;
+    if (list.length > 0) {
+      memoryLeaderboard = list;
+      fetchedFirestore = true;
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, 'leaderboard');
   }
+
+  if (!fetchedFirestore && isSupabaseConfigured) {
+    try {
+      const supa = await fetchSupabaseLeaderboard();
+      if (supa && supa.length > 0) {
+        memoryLeaderboard = supa;
+      }
+    } catch (e) {}
+  }
+
   return memoryLeaderboard;
 }

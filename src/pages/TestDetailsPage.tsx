@@ -71,21 +71,6 @@ export const TestDetailsPage: React.FC = () => {
     setErrorMsg('');
 
     try {
-      // Check Firestore & local records for duplicate candidate attempt
-      const attempt = await checkExistingAttempt(
-        test.id,
-        studentInfo.name,
-        studentInfo.mobile,
-        studentInfo.email
-      );
-
-      if (attempt) {
-        setExistingResult(attempt);
-        setErrorMsg(`Candidate "${studentInfo.name}" has ALREADY completed this examination. Each student is allowed ONLY 1 attempt per test.`);
-        setCheckingAttempt(false);
-        return;
-      }
-
       // Save to localStorage for convenience
       localStorage.setItem('lastStudentName', studentInfo.name.trim());
       if (studentInfo.mobile) localStorage.setItem('lastStudentMobile', studentInfo.mobile.trim());
@@ -97,8 +82,7 @@ export const TestDetailsPage: React.FC = () => {
       // Navigate to Exam Page
       navigate(`/exam/${test.id}`);
     } catch (err) {
-      console.error('Error checking attempt:', err);
-      // Proceed if non-blocking
+      console.error('Error starting exam:', err);
       sessionStorage.setItem(`exam_student_${test.id}`, JSON.stringify(studentInfo));
       navigate(`/exam/${test.id}`);
     } finally {
@@ -226,50 +210,14 @@ export const TestDetailsPage: React.FC = () => {
               </ul>
             </div>
 
-            {/* Already Attempted Warning Banner */}
-            {existingResult ? (
-              <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-900 dark:text-amber-200">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
-                    <FileCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm sm:text-base">
-                      Examination Already Completed (1/1 Attempt Used)
-                    </h4>
-                    <p className="text-xs sm:text-sm mt-1 text-amber-800 dark:text-amber-300 leading-relaxed">
-                      Candidate <strong>"{existingResult.studentName}"</strong> has already completed this exam paper on{' '}
-                      {new Date(existingResult.submittedAt || Date.now()).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}{' '}
-                      with a score of <strong>{existingResult.score}/{existingResult.totalMarks}</strong> ({existingResult.percentage}%).
-                      Re-attempting is strictly restricted to maintain test integrity.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Large Start Test / View Scorecard Button */}
-            {existingResult ? (
-              <button
-                onClick={handleViewExistingResult}
-                className="w-full py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
-              >
-                <AwardIcon className="w-6 h-6 text-white" />
-                <span>View Your Score Card & Answer Key</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowStartModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
-              >
-                <Play className="w-6 h-6 fill-white" />
-                <span>Start Examination Now</span>
-              </button>
-            )}
+            {/* Large Start Test Button */}
+            <button
+              onClick={() => setShowStartModal(true)}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
+            >
+              <Play className="w-6 h-6 fill-white" />
+              <span>Start Examination Now</span>
+            </button>
           </div>
         </div>
 
