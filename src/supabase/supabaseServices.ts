@@ -81,6 +81,8 @@ ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "questionText" TEXT DEFAUL
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS question_text TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "correctAnswer" TEXT DEFAULT 'A';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "correctOptionIndex" INT DEFAULT 0;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS correct_option_index INT DEFAULT 0;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS explanation TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'General';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS topic TEXT DEFAULT '';
@@ -95,6 +97,9 @@ ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "createdAt" TEXT;
 ALTER TABLE public.questions ALTER COLUMN question DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN "questionText" DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN question_text DROP NOT NULL;
+ALTER TABLE public.questions ALTER COLUMN "correctOptionIndex" DROP NOT NULL;
+ALTER TABLE public.questions ALTER COLUMN correctOptionIndex DROP NOT NULL;
+ALTER TABLE public.questions ALTER COLUMN correct_option_index DROP NOT NULL;
 
 -- 3. Notices Table
 CREATE TABLE IF NOT EXISTS public.notices (
@@ -402,11 +407,26 @@ export async function fetchSupabaseQuestions(testId?: string): Promise<Question[
   })) as Question[];
 }
 
+function parseOptIndex(ca: any): number {
+  if (typeof ca === 'number') return ca;
+  if (typeof ca === 'string') {
+    const s = ca.trim().toUpperCase();
+    if (s === 'A' || s === 'OPTION A') return 0;
+    if (s === 'B' || s === 'OPTION B') return 1;
+    if (s === 'C' || s === 'OPTION C') return 2;
+    if (s === 'D' || s === 'OPTION D') return 3;
+    const n = parseInt(s, 10);
+    if (!isNaN(n)) return n;
+  }
+  return 0;
+}
+
 export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
   if (!supabase) return false;
 
   const testIdVal = q.testId && q.testId.trim() !== '' ? q.testId : null;
   const qText = q.question || '';
+  const optIdx = parseOptIndex(q.correctAnswer);
 
   // 1. First attempt: standard payload
   const payload: any = {
@@ -414,8 +434,11 @@ export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
     testId: testIdVal,
     question: qText,
     questionText: qText,
+    question_text: qText,
     options: q.options || [],
     correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
+    correctOptionIndex: optIdx,
+    correct_option_index: optIdx,
     explanation: q.explanation || '',
     subject: q.subject || 'General Knowledge',
     topic: q.topic || '',
@@ -437,8 +460,11 @@ export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
     testId: testIdVal,
     question: qText,
     questionText: qText,
+    question_text: qText,
     options: q.options || [],
-    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A')
+    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
+    correctOptionIndex: optIdx,
+    correct_option_index: optIdx
   };
 
   const retry = await supabase.from('questions').upsert(corePayload);
@@ -451,7 +477,9 @@ export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
     question_text: qText,
     question: qText,
     options: q.options || [],
-    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A')
+    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
+    correctOptionIndex: optIdx,
+    correct_option_index: optIdx
   };
   if (testIdVal !== null) legacyPayload.testId = testIdVal;
 
@@ -465,7 +493,9 @@ export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
       questionText: qText,
       question_text: qText,
       question: qText,
-      options: q.options || []
+      options: q.options || [],
+      correctOptionIndex: optIdx,
+      correct_option_index: optIdx
     };
     const retryNoFk = await supabase.from('questions').upsert(noFkPayload);
     if (!retryNoFk.error) return true;

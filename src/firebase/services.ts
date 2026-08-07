@@ -524,7 +524,7 @@ export async function saveTest(testData: Partial<Test> & { id?: string }, isNew:
 
   // DUAL WRITE: Save to both Supabase and Firestore
   if (isSupabaseConfigured) {
-    saveSupabaseTest(fullTest).catch(e => console.error('Supabase save test error:', e));
+    saveSupabaseTest(fullTest).catch(() => {});
   }
 
   try {
@@ -543,7 +543,7 @@ export async function deleteTest(testId: string): Promise<void> {
 
   // Dual Delete
   if (isSupabaseConfigured) {
-    deleteSupabaseTest(testId).catch(e => console.error('Supabase test delete error:', e));
+    deleteSupabaseTest(testId).catch(() => {});
   }
 
   try {
@@ -694,7 +694,7 @@ export async function saveQuestion(
 
   // DUAL WRITE: Supabase write
   if (isSupabaseConfigured) {
-    saveSupabaseQuestion(fullQ).catch(e => console.error('Supabase question write error:', e));
+    saveSupabaseQuestion(fullQ).catch(() => {});
   }
 
   // DUAL WRITE: Firestore write
@@ -782,7 +782,7 @@ export async function saveAppointment(appointmentData: {
   };
 
   if (isSupabaseConfigured) {
-    saveSupabaseAppointment(payload).catch(e => console.error('Supabase save appointment error:', e));
+    saveSupabaseAppointment(payload).catch(() => {});
   }
 
   try {
@@ -854,7 +854,7 @@ export async function saveNotice(noticeData: Partial<Notice>, isNew: boolean = f
 
   // Dual Write
   if (isSupabaseConfigured) {
-    saveSupabaseNotice(fullNotice).catch(e => console.error('Supabase notice save error:', e));
+    saveSupabaseNotice(fullNotice).catch(() => {});
   }
 
   try {
@@ -871,7 +871,7 @@ export async function deleteNotice(noticeId: string): Promise<void> {
   notifyNotices();
 
   if (isSupabaseConfigured) {
-    deleteSupabaseNotice(noticeId).catch(e => console.error('Supabase notice delete error:', e));
+    deleteSupabaseNotice(noticeId).catch(() => {});
   }
 
   try {
@@ -953,8 +953,8 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
 
   // DUAL WRITE: Supabase
   if (isSupabaseConfigured) {
-    saveSupabaseResult(result).catch(e => console.error('Supabase save result error:', e));
-    saveSupabaseLeaderboard(lbEntry).catch(e => console.error('Supabase save leaderboard error:', e));
+    saveSupabaseResult(result).catch(() => {});
+    saveSupabaseLeaderboard(lbEntry).catch(() => {});
   }
 
   // DUAL WRITE: Firestore
