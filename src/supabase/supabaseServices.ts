@@ -17,48 +17,114 @@ CREATE TABLE IF NOT EXISTS public.tests (
   description TEXT DEFAULT '',
   category TEXT DEFAULT 'Class 10th',
   "imageUrl" TEXT DEFAULT '',
+  image_url TEXT DEFAULT '',
+  imageurl TEXT DEFAULT '',
   "durationMins" INT DEFAULT 30,
+  duration_mins INT DEFAULT 30,
+  durationmins INT DEFAULT 30,
   "totalQuestions" INT DEFAULT 0,
+  total_questions INT DEFAULT 0,
+  totalquestions INT DEFAULT 0,
   "totalMarks" NUMERIC DEFAULT 100,
+  total_marks NUMERIC DEFAULT 100,
+  totalmarks NUMERIC DEFAULT 100,
   "negativeMarking" NUMERIC DEFAULT 0,
+  negative_marking NUMERIC DEFAULT 0,
+  negativemarking NUMERIC DEFAULT 0,
   "passingMarks" NUMERIC DEFAULT 40,
+  passing_marks NUMERIC DEFAULT 40,
+  passingmarks NUMERIC DEFAULT 40,
   instructions JSONB DEFAULT '[]'::jsonb,
   "isPublished" BOOLEAN DEFAULT true,
+  is_published BOOLEAN DEFAULT true,
+  ispublished BOOLEAN DEFAULT true,
   "isPopular" BOOLEAN DEFAULT false,
+  is_popular BOOLEAN DEFAULT false,
+  ispopular BOOLEAN DEFAULT false,
   "isFeatured" BOOLEAN DEFAULT false,
+  is_featured BOOLEAN DEFAULT false,
+  isfeatured BOOLEAN DEFAULT false,
   "allowRetake" BOOLEAN DEFAULT true,
+  allow_retake BOOLEAN DEFAULT true,
+  allowretake BOOLEAN DEFAULT true,
   "testVersion" INT DEFAULT 1,
+  test_version INT DEFAULT 1,
+  testversion INT DEFAULT 1,
   "attemptsCount" INT DEFAULT 0,
+  attempts_count INT DEFAULT 0,
+  attemptscount INT DEFAULT 0,
   "createdAt" TEXT,
-  "updatedAt" TEXT
+  created_at TEXT,
+  createdat TEXT,
+  "updatedAt" TEXT,
+  updated_at TEXT,
+  updatedat TEXT
 );
 
--- Schema migration columns for tests
+-- Ensure all column variations exist for tests
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Class 10th';
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "imageUrl" TEXT DEFAULT '';
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS imageurl TEXT DEFAULT '';
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "durationMins" INT DEFAULT 30;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS duration_mins INT DEFAULT 30;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS durationmins INT DEFAULT 30;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "totalQuestions" INT DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS total_questions INT DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS totalquestions INT DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "totalMarks" NUMERIC DEFAULT 100;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS total_marks NUMERIC DEFAULT 100;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS totalmarks NUMERIC DEFAULT 100;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "negativeMarking" NUMERIC DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS negative_marking NUMERIC DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS negativemarking NUMERIC DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "passingMarks" NUMERIC DEFAULT 40;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS passing_marks NUMERIC DEFAULT 40;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS passingmarks NUMERIC DEFAULT 40;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS instructions JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN DEFAULT true;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT true;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS ispublished BOOLEAN DEFAULT true;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "isPopular" BOOLEAN DEFAULT false;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_popular BOOLEAN DEFAULT false;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS ispopular BOOLEAN DEFAULT false;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "isFeatured" BOOLEAN DEFAULT false;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS isfeatured BOOLEAN DEFAULT false;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "allowRetake" BOOLEAN DEFAULT true;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS allow_retake BOOLEAN DEFAULT true;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS allowretake BOOLEAN DEFAULT true;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "testVersion" INT DEFAULT 1;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS test_version INT DEFAULT 1;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS testversion INT DEFAULT 1;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "attemptsCount" INT DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS attempts_count INT DEFAULT 0;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS attemptscount INT DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "createdAt" TEXT;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS createdat TEXT;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS "updatedAt" TEXT;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS updated_at TEXT;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS updatedat TEXT;
 
--- 2. Create or Update Questions Table (Drop FK constraints to avoid Postgres 23503 errors)
+-- 2. Create or Update Questions Table
 CREATE TABLE IF NOT EXISTS public.questions (
   id TEXT PRIMARY KEY,
   "testId" TEXT,
-  question TEXT NOT NULL,
-  options JSONB NOT NULL DEFAULT '[]'::jsonb,
-  "correctAnswer" TEXT NOT NULL DEFAULT 'A',
+  test_id TEXT,
+  testid TEXT,
+  question TEXT DEFAULT '',
+  "questionText" TEXT DEFAULT '',
+  question_text TEXT DEFAULT '',
+  questiontext TEXT DEFAULT '',
+  options JSONB DEFAULT '[]'::jsonb,
+  "correctAnswer" TEXT DEFAULT 'A',
+  correct_answer TEXT DEFAULT 'A',
+  correctanswer TEXT DEFAULT 'A',
+  "correctOptionIndex" INT DEFAULT 0,
+  correct_option_index INT DEFAULT 0,
+  correctoptionindex INT DEFAULT 0,
   explanation TEXT DEFAULT '',
   subject TEXT DEFAULT 'General',
   topic TEXT DEFAULT '',
@@ -66,23 +132,35 @@ CREATE TABLE IF NOT EXISTS public.questions (
   type TEXT DEFAULT 'single',
   marks NUMERIC DEFAULT 2,
   "imageUrl" TEXT DEFAULT '',
+  image_url TEXT DEFAULT '',
+  imageurl TEXT DEFAULT '',
   "paragraphText" TEXT DEFAULT '',
-  "createdAt" TEXT
+  paragraph_text TEXT DEFAULT '',
+  paragraphtext TEXT DEFAULT '',
+  "createdAt" TEXT,
+  created_at TEXT,
+  createdat TEXT
 );
 
 -- Drop potential strict FK constraints on questions
 ALTER TABLE public.questions DROP CONSTRAINT IF EXISTS "questions_testId_fkey";
 ALTER TABLE public.questions DROP CONSTRAINT IF EXISTS questions_test_id_fkey;
 
--- Schema migration columns for questions
+-- Ensure all column variations exist for questions
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "testId" TEXT;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS test_id TEXT;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS testid TEXT;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS question TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "questionText" TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS question_text TEXT DEFAULT '';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS questiontext TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "correctAnswer" TEXT DEFAULT 'A';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS correct_answer TEXT DEFAULT 'A';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS correctanswer TEXT DEFAULT 'A';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "correctOptionIndex" INT DEFAULT 0;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS correct_option_index INT DEFAULT 0;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS correctoptionindex INT DEFAULT 0;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS explanation TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'General';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS topic TEXT DEFAULT '';
@@ -90,15 +168,20 @@ ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'M
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'single';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS marks NUMERIC DEFAULT 2;
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "imageUrl" TEXT DEFAULT '';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS imageurl TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "paragraphText" TEXT DEFAULT '';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS paragraph_text TEXT DEFAULT '';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS paragraphtext TEXT DEFAULT '';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS "createdAt" TEXT;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS createdat TEXT;
 
 -- Drop strict NOT NULL constraints on legacy question columns if any exist
 ALTER TABLE public.questions ALTER COLUMN question DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN "questionText" DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN question_text DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN "correctOptionIndex" DROP NOT NULL;
-ALTER TABLE public.questions ALTER COLUMN correctOptionIndex DROP NOT NULL;
 ALTER TABLE public.questions ALTER COLUMN correct_option_index DROP NOT NULL;
 
 -- 3. Notices Table
@@ -110,13 +193,17 @@ CREATE TABLE IF NOT EXISTS public.notices (
   date TEXT NOT NULL,
   important BOOLEAN DEFAULT false,
   type TEXT DEFAULT 'announcement',
-  "linkUrl" TEXT DEFAULT ''
+  "linkUrl" TEXT DEFAULT '',
+  link_url TEXT DEFAULT '',
+  linkurl TEXT DEFAULT ''
 );
 
 ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS important BOOLEAN DEFAULT false;
 ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'announcement';
 ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS "linkUrl" TEXT DEFAULT '';
+ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS link_url TEXT DEFAULT '';
+ALTER TABLE public.notices ADD COLUMN IF NOT EXISTS linkurl TEXT DEFAULT '';
 
 -- 4. Site Settings Table
 CREATE TABLE IF NOT EXISTS public.settings (
@@ -300,66 +387,132 @@ export async function fetchSupabaseTests(): Promise<Test[] | null> {
     title: row.title || '',
     description: row.description || '',
     category: row.category || row.subject || 'Class 10th',
-    imageUrl: row.imageUrl || '',
-    durationMins: Number(row.durationMins || row.durationMinutes) || 30,
-    totalQuestions: Number(row.totalQuestions) || 0,
-    totalMarks: Number(row.totalMarks) || 100,
-    negativeMarking: Number(row.negativeMarking) || 0,
-    passingMarks: Number(row.passingMarks || row.passingPercentage) || 40,
+    imageUrl: row.imageUrl || row.image_url || row.imageurl || '',
+    durationMins: Number(row.durationMins || row.duration_mins || row.durationmins || row.durationMinutes) || 30,
+    totalQuestions: Number(row.totalQuestions || row.total_questions || row.totalquestions) || 0,
+    totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
+    negativeMarking: Number(row.negativeMarking || row.negative_marking || row.negativemarking) || 0,
+    passingMarks: Number(row.passingMarks || row.passing_marks || row.passingmarks || row.passingPercentage) || 40,
     instructions: typeof row.instructions === 'string' ? JSON.parse(row.instructions) : (row.instructions || []),
-    isPublished: row.isPublished !== undefined ? Boolean(row.isPublished) : true,
-    isPopular: Boolean(row.isPopular),
-    isFeatured: Boolean(row.isFeatured),
-    allowRetake: row.allowRetake !== undefined ? Boolean(row.allowRetake) : true,
-    testVersion: Number(row.testVersion) || 1,
-    attemptsCount: Number(row.attemptsCount) || 0,
-    createdAt: row.createdAt || new Date().toISOString(),
-    updatedAt: row.updatedAt || new Date().toISOString()
+    isPublished: row.isPublished !== undefined ? Boolean(row.isPublished) : (row.is_published !== undefined ? Boolean(row.is_published) : (row.ispublished !== undefined ? Boolean(row.ispublished) : true)),
+    isPopular: Boolean(row.isPopular || row.is_popular || row.ispopular),
+    isFeatured: Boolean(row.isFeatured || row.is_featured || row.isfeatured),
+    allowRetake: row.allowRetake !== undefined ? Boolean(row.allowRetake) : (row.allow_retake !== undefined ? Boolean(row.allow_retake) : true),
+    testVersion: Number(row.testVersion || row.test_version || row.testversion) || 1,
+    attemptsCount: Number(row.attemptsCount || row.attempts_count || row.attemptscount) || 0,
+    createdAt: row.createdAt || row.created_at || row.createdat || new Date().toISOString(),
+    updatedAt: row.updatedAt || row.updated_at || row.updatedat || new Date().toISOString()
   })) as Test[];
 }
 
 export async function saveSupabaseTest(t: Test): Promise<boolean> {
   if (!supabase) return false;
 
+  const now = new Date().toISOString();
+  const duration = Number(t.durationMins) || 30;
+  const tQuestions = Number(t.totalQuestions) || 0;
+  const tMarks = Number(t.totalMarks) || 100;
+  const negMarking = Number(t.negativeMarking) || 0;
+  const passMarks = Number(t.passingMarks) || 40;
+  const isPub = t.isPublished !== undefined ? Boolean(t.isPublished) : true;
+  const isPop = Boolean(t.isPopular);
+  const isFeat = Boolean(t.isFeatured);
+  const retake = t.allowRetake !== undefined ? Boolean(t.allowRetake) : true;
+  const ver = Number(t.testVersion) || 1;
+  const attempts = Number(t.attemptsCount) || 0;
+  const created = t.createdAt || now;
+
+  // Primary payload with all schema alias columns populated
   const payload: any = {
     id: t.id,
     title: t.title || 'Untitled Test',
     description: t.description || '',
     category: t.category || 'Class 10th',
-    imageUrl: t.imageUrl || '',
-    durationMins: Number(t.durationMins) || 30,
-    totalQuestions: Number(t.totalQuestions) || 0,
-    totalMarks: Number(t.totalMarks) || 100,
-    negativeMarking: Number(t.negativeMarking) || 0,
-    passingMarks: Number(t.passingMarks) || 40,
     instructions: t.instructions || [],
-    isPublished: t.isPublished !== undefined ? Boolean(t.isPublished) : true,
-    isPopular: Boolean(t.isPopular),
-    isFeatured: Boolean(t.isFeatured),
-    allowRetake: t.allowRetake !== undefined ? Boolean(t.allowRetake) : true,
-    testVersion: Number(t.testVersion) || 1,
-    attemptsCount: Number(t.attemptsCount) || 0,
-    createdAt: t.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    // CamelCase
+    imageUrl: t.imageUrl || '',
+    durationMins: duration,
+    totalQuestions: tQuestions,
+    totalMarks: tMarks,
+    negativeMarking: negMarking,
+    passingMarks: passMarks,
+    isPublished: isPub,
+    isPopular: isPop,
+    isFeatured: isFeat,
+    allowRetake: retake,
+    testVersion: ver,
+    attemptsCount: attempts,
+    createdAt: created,
+    updatedAt: now,
+    // snake_case
+    image_url: t.imageUrl || '',
+    duration_mins: duration,
+    total_questions: tQuestions,
+    total_marks: tMarks,
+    negative_marking: negMarking,
+    passing_marks: passMarks,
+    is_published: isPub,
+    is_popular: isPop,
+    is_featured: isFeat,
+    allow_retake: retake,
+    test_version: ver,
+    attempts_count: attempts,
+    created_at: created,
+    updated_at: now,
+    // unquoted lowercase
+    imageurl: t.imageUrl || '',
+    durationmins: duration,
+    totalquestions: tQuestions,
+    totalmarks: tMarks,
+    negativemarking: negMarking,
+    passingmarks: passMarks,
+    ispublished: isPub,
+    ispopular: isPop,
+    isfeatured: isFeat,
+    allowretake: retake,
+    testversion: ver,
+    attemptscount: attempts,
+    createdat: created,
+    updatedat: now
   };
 
   const { error } = await supabase.from('tests').upsert(payload);
+  if (!error) return true;
 
-  if (error) {
-    // Retry without optional schema-cache sensitive columns
-    const corePayload = {
-      id: t.id,
-      title: t.title || 'Untitled Test',
-      description: t.description || '',
-      category: t.category || 'Class 10th'
-    };
-    const retry = await supabase.from('tests').upsert(corePayload);
-    if (retry.error) {
-      console.error('Supabase save test error:', retry.error.message);
-      return false;
-    }
-  }
-  return true;
+  // Retry 1: CamelCase payload
+  const camelPayload: any = {
+    id: t.id,
+    title: t.title || 'Untitled Test',
+    description: t.description || '',
+    category: t.category || 'Class 10th',
+    imageUrl: t.imageUrl || '',
+    durationMins: duration,
+    totalQuestions: tQuestions,
+    totalMarks: tMarks,
+    negativeMarking: negMarking,
+    passingMarks: passMarks,
+    instructions: t.instructions || [],
+    isPublished: isPub,
+    isPopular: isPop,
+    isFeatured: isFeat,
+    allowRetake: retake,
+    testVersion: ver,
+    attemptsCount: attempts,
+    createdAt: created,
+    updatedAt: now
+  };
+  const retryCamel = await supabase.from('tests').upsert(camelPayload);
+  if (!retryCamel.error) return true;
+
+  // Retry 2: Core minimal payload
+  const corePayload = {
+    id: t.id,
+    title: t.title || 'Untitled Test',
+    description: t.description || '',
+    category: t.category || 'Class 10th'
+  };
+  const retryCore = await supabase.from('tests').upsert(corePayload);
+  return !retryCore.error;
 }
 
 export async function deleteSupabaseTest(testId: string): Promise<boolean> {
@@ -370,7 +523,7 @@ export async function deleteSupabaseTest(testId: string): Promise<boolean> {
     return false;
   }
   // Delete associated questions as well
-  await supabase.from('questions').delete().eq('testId', testId);
+  await supabase.from('questions').delete().or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
   return true;
 }
 
@@ -378,33 +531,41 @@ export async function deleteSupabaseTest(testId: string): Promise<boolean> {
 // 2. QUESTIONS API (FETCH, SAVE, DELETE)
 // ---------------------------------------------------------
 
-export async function fetchSupabaseQuestions(testId?: string): Promise<Question[] | null> {
-  if (!supabase) return null;
-  let queryBuilder = supabase.from('questions').select('*');
-  if (testId) {
-    queryBuilder = queryBuilder.eq('testId', testId);
-  }
-  const { data, error } = await queryBuilder;
-
-  if (error) {
-    console.error('Supabase fetch questions error:', error);
-    return null;
-  }
-  return (data || []).map((row: any) => ({
+function parseQuestionRow(row: any): Question {
+  return {
     id: row.id,
-    testId: row.testId,
-    question: row.question || row.questionText || row.question_text || '',
+    testId: row.testId || row.test_id || row.testid || '',
+    question: row.question || row.questionText || row.question_text || row.questiontext || '',
     options: typeof row.options === 'string' ? JSON.parse(row.options) : (row.options || []),
-    correctAnswer: row.correctAnswer || row.correctOptionIndex || 'A',
+    correctAnswer: row.correctAnswer || row.correct_answer || row.correctanswer || row.correctOptionIndex || 'A',
     explanation: row.explanation || '',
     subject: row.subject || 'General Knowledge',
     topic: row.topic || '',
     difficulty: row.difficulty || 'Medium',
     type: row.type || 'single',
     marks: row.marks !== undefined ? Number(row.marks) : 2,
-    imageUrl: row.imageUrl || '',
-    paragraphText: row.paragraphText || ''
-  })) as Question[];
+    imageUrl: row.imageUrl || row.image_url || row.imageurl || '',
+    paragraphText: row.paragraphText || row.paragraph_text || row.paragraphtext || ''
+  };
+}
+
+export async function fetchSupabaseQuestions(testId?: string): Promise<Question[] | null> {
+  if (!supabase) return null;
+  let queryBuilder = supabase.from('questions').select('*');
+  if (testId) {
+    queryBuilder = queryBuilder.or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
+  }
+  const { data, error } = await queryBuilder;
+
+  if (error) {
+    // Fallback if .or query fails
+    const fallback = await supabase.from('questions').select('*');
+    if (fallback.error || !fallback.data) return null;
+    const all = fallback.data;
+    const filtered = testId ? all.filter((r: any) => (r.testId === testId || r.test_id === testId || r.testid === testId)) : all;
+    return filtered.map(parseQuestionRow);
+  }
+  return (data || []).map(parseQuestionRow) as Question[];
 }
 
 function parseOptIndex(ca: any): number {
@@ -427,82 +588,87 @@ export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
   const testIdVal = q.testId && q.testId.trim() !== '' ? q.testId : null;
   const qText = q.question || '';
   const optIdx = parseOptIndex(q.correctAnswer);
+  const corrAnsStr = Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A');
+  const now = new Date().toISOString();
 
-  // 1. First attempt: standard payload
+  // Multi-alias payload that covers camelCase, snake_case, and unquoted lowercase DB schemas
   const payload: any = {
     id: q.id,
+    // testId aliases
     testId: testIdVal,
+    test_id: testIdVal,
+    testid: testIdVal,
+    // question text aliases
     question: qText,
     questionText: qText,
     question_text: qText,
+    questiontext: qText,
+    // options
     options: q.options || [],
-    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
+    // correctAnswer aliases
+    correctAnswer: corrAnsStr,
+    correct_answer: corrAnsStr,
+    correctanswer: corrAnsStr,
+    // correctOptionIndex aliases
     correctOptionIndex: optIdx,
     correct_option_index: optIdx,
+    correctoptionindex: optIdx,
+    // metadata
     explanation: q.explanation || '',
     subject: q.subject || 'General Knowledge',
     topic: q.topic || '',
     difficulty: q.difficulty || 'Medium',
     type: q.type || 'single',
     marks: q.marks !== undefined ? Number(q.marks) : 2,
+    // imageUrl aliases
     imageUrl: q.imageUrl || '',
+    image_url: q.imageUrl || '',
+    imageurl: q.imageUrl || '',
+    // paragraphText aliases
     paragraphText: q.paragraphText || '',
-    createdAt: new Date().toISOString()
+    paragraph_text: q.paragraphText || '',
+    paragraphtext: q.paragraphText || '',
+    // createdAt aliases
+    createdAt: now,
+    created_at: now,
+    createdat: now
   };
 
   const { error } = await supabase.from('questions').upsert(payload);
 
   if (!error) return true;
 
-  // 2. Retry payload if column missing or constraint violation occurred
-  const corePayload: any = {
+  // Retry 1: CamelCase payload
+  const camelPayload: any = {
     id: q.id,
     testId: testIdVal,
     question: qText,
     questionText: qText,
-    question_text: qText,
     options: q.options || [],
-    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
+    correctAnswer: corrAnsStr,
     correctOptionIndex: optIdx,
-    correct_option_index: optIdx
+    explanation: q.explanation || '',
+    subject: q.subject || 'General Knowledge'
   };
 
-  const retry = await supabase.from('questions').upsert(corePayload);
-  if (!retry.error) return true;
+  const retryCamel = await supabase.from('questions').upsert(camelPayload);
+  if (!retryCamel.error) return true;
 
-  // 3. Try with questionText and question_text specifically for legacy schemas with NOT NULL constraints
-  const legacyPayload: any = {
+  // Retry 2: Minimal fallback payload
+  const corePayload: any = {
     id: q.id,
-    questionText: qText,
-    question_text: qText,
     question: qText,
-    options: q.options || [],
-    correctAnswer: Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A'),
-    correctOptionIndex: optIdx,
-    correct_option_index: optIdx
+    options: q.options || []
   };
-  if (testIdVal !== null) legacyPayload.testId = testIdVal;
+  if (testIdVal) corePayload.testId = testIdVal;
 
-  const retryLegacy = await supabase.from('questions').upsert(legacyPayload);
-  if (!retryLegacy.error) return true;
+  const retryCore = await supabase.from('questions').upsert(corePayload);
+  if (!retryCore.error) return true;
 
-  // 4. Try without testId (in case testId foreign key fails)
-  if (testIdVal !== null) {
-    const noFkPayload = {
-      id: q.id,
-      questionText: qText,
-      question_text: qText,
-      question: qText,
-      options: q.options || [],
-      correctOptionIndex: optIdx,
-      correct_option_index: optIdx
-    };
-    const retryNoFk = await supabase.from('questions').upsert(noFkPayload);
-    if (!retryNoFk.error) return true;
-  }
-
-  console.error('Supabase save question error:', retry.error.message);
-  return false;
+  // Retry 3: Core without testId
+  delete corePayload.testId;
+  const retryNoFk = await supabase.from('questions').upsert(corePayload);
+  return !retryNoFk.error;
 }
 
 export async function deleteSupabaseQuestion(qId: string): Promise<boolean> {
