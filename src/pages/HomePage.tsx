@@ -267,6 +267,9 @@ export const HomePage: React.FC = () => {
           <LeaderboardTeaser entries={leaderboard} />
         </div>
 
+        {/* 300x250 Banner Ads (Border Boxed) & Pop Ad */}
+        <HomeBannerAd />
+
       </div>
     </div>
   );

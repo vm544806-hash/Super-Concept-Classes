@@ -131,20 +131,17 @@ export const Viralnex300x250Ad: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (!settings.adsEnabled) return;
+    if (!settings.adsEnabled || location.pathname !== '/') return;
 
-    const container = document.getElementById('viralnex-300x250-ad-box');
+    const container = document.getElementById('viralnex-300x250-ad-box-1');
     if (!container) return;
 
-    // Reset container contents
     container.innerHTML = '';
 
-    // Create Viralnex script tag
     const script = document.createElement('script');
     script.src = 'https://viralnex.com/serve_ad.php?id=23d9640a91284aff';
     script.async = true;
 
-    // Create noscript fallback tag
     const noscript = document.createElement('noscript');
     noscript.innerHTML = `<a href="https://viralnex.com/serve_nojs.php?id=23d9640a91284aff" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=23d9640a91284aff" alt="ad"/></a>`;
 
@@ -152,32 +149,102 @@ export const Viralnex300x250Ad: React.FC = () => {
     container.appendChild(noscript);
 
     return () => {
-      if (container) {
-        container.innerHTML = '';
+      if (container) container.innerHTML = '';
+    };
+  }, [settings.adsEnabled, location.pathname]);
+
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
+
+  return (
+    <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] text-slate-900 dark:text-amber-300 font-black tracking-wider uppercase bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+          SPONSORED AD #1 / विज्ञापन
+        </span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
+      </div>
+      <div 
+        id="viralnex-300x250-ad-box-1"
+        className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
+      >
+      </div>
+    </div>
+  );
+};
+
+export const Viralnex300x250Ad2: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!settings.adsEnabled || location.pathname !== '/') return;
+
+    const container = document.getElementById('viralnex-300x250-ad-box-2');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const script = document.createElement('script');
+    script.src = 'https://viralnex.com/serve_ad.php?id=317aed465e492c14';
+    script.async = true;
+
+    const noscript = document.createElement('noscript');
+    noscript.innerHTML = `<a href="https://viralnex.com/serve_nojs.php?id=317aed465e492c14" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=317aed465e492c14" alt="ad"/></a>`;
+
+    container.appendChild(script);
+    container.appendChild(noscript);
+
+    return () => {
+      if (container) container.innerHTML = '';
+    };
+  }, [settings.adsEnabled, location.pathname]);
+
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
+
+  return (
+    <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-indigo-500/40 dark:border-indigo-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] text-indigo-900 dark:text-indigo-300 font-black tracking-wider uppercase bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">
+          SPONSORED AD #2 / विज्ञापन
+        </span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
+      </div>
+      <div 
+        id="viralnex-300x250-ad-box-2"
+        className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
+      >
+      </div>
+    </div>
+  );
+};
+
+export const ViralnexPopAdManager: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!settings.adsEnabled || location.pathname !== '/') return;
+
+    const SCRIPT_ID = 'viralnex-pop-ad-script';
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.src = 'https://viralnex.com/serve_ad.php?id=bdd3f6bf99169b2e';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      if (location.pathname !== '/') {
+        const existing = document.getElementById(SCRIPT_ID);
+        if (existing) existing.remove();
       }
     };
   }, [settings.adsEnabled, location.pathname]);
 
-  if (!settings.adsEnabled) return null;
-
-  return (
-    <div id="viralnex-ad-wrapper" className="w-full my-6 flex flex-col justify-center items-center px-4">
-      {/* 300x250 Border Box Container */}
-      <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] text-slate-900 dark:text-amber-300 font-black tracking-wider uppercase bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-            ADVERTISEMENT / विज्ञापन
-          </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
-        </div>
-        <div 
-          id="viralnex-300x250-ad-box"
-          className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
-        >
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export const HomeBannerAd: React.FC = () => {
@@ -186,7 +253,20 @@ export const HomeBannerAd: React.FC = () => {
 
   if (!settings.adsEnabled || location.pathname !== '/') return null;
 
-  return <Viralnex300x250Ad />;
+  return (
+    <div id="home-bottom-advertisements" className="w-full my-8 px-4 flex flex-col items-center">
+      <ViralnexPopAdManager />
+      <div className="text-center mb-4">
+        <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full">
+          Official Sponsor Advertisements
+        </span>
+      </div>
+      <div className="flex flex-col lg:flex-row items-center justify-center gap-6 w-full max-w-4xl">
+        <Viralnex300x250Ad />
+        <Viralnex300x250Ad2 />
+      </div>
+    </div>
+  );
 };
 
 export const HomeInlineAd: React.FC = () => {
