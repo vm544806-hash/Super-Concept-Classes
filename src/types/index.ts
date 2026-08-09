@@ -107,6 +107,7 @@ export interface LeaderboardEntry {
   totalMarks: number;
   percentage: number;
   timeTakenFormatted: string;
+  timeTakenSeconds?: number;
   date: string;
   rank?: number;
 }
@@ -121,6 +122,7 @@ export interface SiteSettings {
   contactPhone: string;
   address: string;
   adsEnabled: boolean;
+  adsenseClientId?: string;
   socialLinks: {
     facebook?: string;
     telegram?: string;

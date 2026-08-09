@@ -5,7 +5,8 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
-import { InPagePushAdManager, VideoSliderAdManager } from './components/common/AdComponents';
+import { GoogleAdSenseManager, InPagePushAdManager, VideoSliderAdManager } from './components/common/AdComponents';
+import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -16,6 +17,10 @@ import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { NoticePage } from './pages/NoticePage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { TermsPage } from './pages/TermsPage';
+import { DisclaimerPage } from './pages/DisclaimerPage';
+import { FAQPage } from './pages/FAQPage';
 
 // Admin Pages
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
@@ -43,8 +48,10 @@ export default function App() {
       <SettingsProvider>
         <AuthProvider>
           <BrowserRouter>
+            <GoogleAdSenseManager />
             <InPagePushAdManager />
             <VideoSliderAdManager />
+            <CookieConsentBanner />
             <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
               <Navbar />
 
@@ -59,6 +66,10 @@ export default function App() {
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/leaderboard" element={<LeaderboardPage />} />
                   <Route path="/notice" element={<NoticePage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/disclaimer" element={<DisclaimerPage />} />
+                  <Route path="/faq" element={<FAQPage />} />
 
                   {/* Admin Routes */}
                   <Route path="/admin" element={<AdminLoginPage />} />

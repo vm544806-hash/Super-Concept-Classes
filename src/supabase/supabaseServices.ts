@@ -215,26 +215,58 @@ CREATE TABLE IF NOT EXISTS public.settings (
 CREATE TABLE IF NOT EXISTS public.results (
   id TEXT PRIMARY KEY,
   "userId" TEXT,
+  user_id TEXT,
+  userid TEXT,
   "userName" TEXT,
+  user_name TEXT,
+  username TEXT,
   "userEmail" TEXT,
+  user_email TEXT,
+  useremail TEXT,
   "studentName" TEXT,
+  student_name TEXT,
+  studentname TEXT,
   "studentEmail" TEXT,
+  student_email TEXT,
+  studentemail TEXT,
   "studentMobile" TEXT,
+  student_mobile TEXT,
+  studentmobile TEXT,
   "testId" TEXT,
+  test_id TEXT,
+  testid TEXT,
   "testTitle" TEXT,
+  test_title TEXT,
+  testtitle TEXT,
   category TEXT DEFAULT 'Class 10th',
   score NUMERIC DEFAULT 0,
   "totalMarks" NUMERIC DEFAULT 100,
+  total_marks NUMERIC DEFAULT 100,
+  totalmarks NUMERIC DEFAULT 100,
   percentage NUMERIC DEFAULT 0,
   passed BOOLEAN DEFAULT true,
   "totalQuestions" INT DEFAULT 0,
+  total_questions INT DEFAULT 0,
+  totalquestions INT DEFAULT 0,
   "correctAnswers" INT DEFAULT 0,
+  correct_answers INT DEFAULT 0,
+  correctanswers INT DEFAULT 0,
   "wrongAnswers" INT DEFAULT 0,
+  wrong_answers INT DEFAULT 0,
+  wronganswers INT DEFAULT 0,
   unanswered INT DEFAULT 0,
   "timeTakenSeconds" INT DEFAULT 0,
+  time_taken_seconds INT DEFAULT 0,
+  timetakenseconds INT DEFAULT 0,
   "submittedAt" TEXT,
+  submitted_at TEXT,
+  submittedat TEXT,
   "testVersion" INT DEFAULT 1,
-  "userAnswers" JSONB DEFAULT '{}'::jsonb
+  test_version INT DEFAULT 1,
+  testversion INT DEFAULT 1,
+  "userAnswers" JSONB DEFAULT '{}'::jsonb,
+  user_answers JSONB DEFAULT '{}'::jsonb,
+  useranswers JSONB DEFAULT '{}'::jsonb
 );
 
 ALTER TABLE public.results DROP CONSTRAINT IF EXISTS "results_testId_fkey";
@@ -242,57 +274,121 @@ ALTER TABLE public.results DROP CONSTRAINT IF EXISTS results_test_id_fkey;
 
 -- Migration columns for results
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "userId" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS userid TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "userName" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS user_name TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS username TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "userEmail" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS user_email TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS useremail TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "studentName" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS studentname TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "studentEmail" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS student_email TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS studentemail TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "studentMobile" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS student_mobile TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS studentmobile TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "testId" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS test_id TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS testid TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "testTitle" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS test_title TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS testtitle TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Class 10th';
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS score NUMERIC DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "totalMarks" NUMERIC DEFAULT 100;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS total_marks NUMERIC DEFAULT 100;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS totalmarks NUMERIC DEFAULT 100;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS percentage NUMERIC DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS passed BOOLEAN DEFAULT true;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "totalQuestions" INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS total_questions INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS totalquestions INT DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "correctAnswers" INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS correct_answers INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS correctanswers INT DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "wrongAnswers" INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS wrong_answers INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS wronganswers INT DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS unanswered INT DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "timeTakenSeconds" INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS time_taken_seconds INT DEFAULT 0;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS timetakenseconds INT DEFAULT 0;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "submittedAt" TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS submitted_at TEXT;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS submittedat TEXT;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "testVersion" INT DEFAULT 1;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS test_version INT DEFAULT 1;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS testversion INT DEFAULT 1;
 ALTER TABLE public.results ADD COLUMN IF NOT EXISTS "userAnswers" JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS user_answers JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.results ADD COLUMN IF NOT EXISTS useranswers JSONB DEFAULT '{}'::jsonb;
 
 -- 6. Leaderboard Table
 CREATE TABLE IF NOT EXISTS public.leaderboard (
   id TEXT PRIMARY KEY,
   "userId" TEXT,
+  user_id TEXT,
+  userid TEXT,
   "userName" TEXT,
+  user_name TEXT,
+  username TEXT,
   "studentName" TEXT,
+  student_name TEXT,
+  studentname TEXT,
   "testId" TEXT,
+  test_id TEXT,
+  testid TEXT,
   "testTitle" TEXT,
+  test_title TEXT,
+  testtitle TEXT,
   score NUMERIC DEFAULT 0,
   "totalMarks" NUMERIC DEFAULT 100,
+  total_marks NUMERIC DEFAULT 100,
+  totalmarks NUMERIC DEFAULT 100,
   percentage NUMERIC DEFAULT 0,
   rank INT DEFAULT 1,
   "timeTakenFormatted" TEXT DEFAULT '',
-  "submittedAt" TEXT
+  time_taken_formatted TEXT DEFAULT '',
+  timetakenformatted TEXT DEFAULT '',
+  "submittedAt" TEXT,
+  submitted_at TEXT,
+  submittedat TEXT
 );
 
 ALTER TABLE public.leaderboard DROP CONSTRAINT IF EXISTS "leaderboard_testId_fkey";
 ALTER TABLE public.leaderboard DROP CONSTRAINT IF EXISTS leaderboard_test_id_fkey;
 
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "userId" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS userid TEXT;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "userName" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS user_name TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS username TEXT;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "studentName" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS studentname TEXT;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "testId" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS test_id TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS testid TEXT;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "testTitle" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS test_title TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS testtitle TEXT;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS score NUMERIC DEFAULT 0;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "totalMarks" NUMERIC DEFAULT 100;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS total_marks NUMERIC DEFAULT 100;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS totalmarks NUMERIC DEFAULT 100;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS percentage NUMERIC DEFAULT 0;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS rank INT DEFAULT 1;
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "timeTakenFormatted" TEXT DEFAULT '';
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS time_taken_formatted TEXT DEFAULT '';
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS timetakenformatted TEXT DEFAULT '';
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS "submittedAt" TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS submitted_at TEXT;
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS submittedat TEXT;
 
 -- 7. Appointments & Contacts Table
 CREATE TABLE IF NOT EXISTS public.appointments (
@@ -304,8 +400,13 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   message TEXT DEFAULT '',
   date TEXT DEFAULT '',
   status TEXT DEFAULT 'pending',
-  "createdAt" TEXT
+  "createdAt" TEXT,
+  created_at TEXT,
+  createdat TEXT
 );
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS "createdAt" TEXT;
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS createdat TEXT;
 
 -- Grant Schema & Table Access Permissions (Essential for Supabase API access)
 GRANT USAGE ON SCHEMA public TO anon, authenticated, postgres, service_role;

@@ -54,13 +54,14 @@ export const Footer: React.FC = () => {
           {/* Quick Links */}
           <div>
             <h4 className="text-white font-bold text-base mb-4 tracking-wide uppercase text-xs text-blue-400">Quick Navigation</h4>
-            <ul className="space-y-2.5 text-sm">
+            <ul className="space-y-2 text-sm">
               <li><Link to="/" className="hover:text-blue-400 transition-colors">Home & All Mock Tests</Link></li>
               <li><Link to="/leaderboard" className="hover:text-blue-400 transition-colors">All-India Leaderboard</Link></li>
               <li><Link to="/notice" className="hover:text-blue-400 transition-colors">Official Exam Notices</Link></li>
+              <li><Link to="/faq" className="hover:text-blue-400 transition-colors">Help Center & FAQ</Link></li>
               <li><Link to="/about" className="hover:text-blue-400 transition-colors">About Portal & Mission</Link></li>
-              <li><Link to="/contact" className="hover:text-blue-400 transition-colors">Help & Contact Support</Link></li>
-              <li><Link to="/admin" className="hover:text-blue-400 transition-colors">Admin Management Panel</Link></li>
+              <li><Link to="/contact" className="hover:text-blue-400 transition-colors">Contact & Support</Link></li>
+              <li><Link to="/admin" className="hover:text-blue-400 transition-colors">Admin Panel</Link></li>
             </ul>
           </div>
 
@@ -68,7 +69,7 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-white font-bold text-base mb-4 tracking-wide uppercase text-xs text-blue-400">Exam Categories</h4>
             <div className="flex flex-wrap gap-1.5">
-              {['SSC CGL', 'RRB NTPC', 'SBI PO', 'UPSC CSAT', 'CTET Paper 1', 'State Police', 'Reasoning', 'Mathematics', 'General Science', 'Computer'].map(cat => (
+              {['Class 10th', 'Class 11th', 'Class 12th', 'B.A', 'SSC CGL', 'RRB NTPC', 'State PCS', 'Reasoning', 'Mathematics', 'General Science'].map(cat => (
                 <span key={cat} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md text-xs cursor-pointer transition-colors border border-slate-700/50">
                   {cat}
                 </span>
@@ -97,15 +98,17 @@ export const Footer: React.FC = () => {
 
         </div>
 
-        {/* Bottom Bar */}
+        {/* Bottom Bar with mandatory Google AdSense Legal links */}
         <div className="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>{settings.footerText || '© 2026 Smart Exam Portal. All Rights Reserved.'}</p>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-400">
+            <Link to="/privacy-policy" className="hover:text-blue-400 transition-colors">Privacy Policy</Link>
             <span>•</span>
-            <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
+            <Link to="/terms" className="hover:text-blue-400 transition-colors">Terms of Service</Link>
             <span>•</span>
-            <span className="hover:text-slate-400 cursor-pointer">Disclaimer</span>
+            <Link to="/disclaimer" className="hover:text-blue-400 transition-colors">Disclaimer</Link>
+            <span>•</span>
+            <Link to="/faq" className="hover:text-blue-400 transition-colors">FAQ</Link>
           </div>
         </div>
       </div>

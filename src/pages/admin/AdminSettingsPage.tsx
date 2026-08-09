@@ -57,8 +57,8 @@ export const AdminSettingsPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
           
           {/* Monetization / Ad Toggle Box */}
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
                 <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
@@ -78,6 +78,22 @@ export const AdminSettingsPage: React.FC = () => {
               >
                 {form.adsEnabled ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
               </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                Google AdSense Publisher ID (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. ca-pub-1234567890123456"
+                value={form.adsenseClientId || ''}
+                onChange={e => setForm({ ...form, adsenseClientId: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-mono text-amber-300 focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder:text-slate-600"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                When specified, Google Auto-Ads script tag will automatically be injected for instant AdSense ad serving on non-exam pages.
+              </p>
             </div>
           </div>
 

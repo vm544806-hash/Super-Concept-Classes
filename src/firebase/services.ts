@@ -113,6 +113,83 @@ const leaderboardSubscribers = new Set<Callback<LeaderboardEntry[]>>();
 const resultsSubscribers = new Set<Callback<ExamResult[]>>();
 const questionsSubscribers = new Map<string, Set<Callback<Question[]>>>();
 
+export function parseTimeToSeconds(formatted: string = ''): number {
+  if (!formatted) return 999999;
+  let totalSecs = 0;
+  const hMatch = formatted.match(/(\d+)\s*h/i);
+  const mMatch = formatted.match(/(\d+)\s*m/i);
+  const sMatch = formatted.match(/(\d+)\s*s/i);
+  if (hMatch) totalSecs += parseInt(hMatch[1], 10) * 3600;
+  if (mMatch) totalSecs += parseInt(mMatch[1], 10) * 60;
+  if (sMatch) totalSecs += parseInt(sMatch[1], 10);
+  return totalSecs > 0 ? totalSecs : 999999;
+}
+
+export function sortAndRankLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  const map = new Map<string, LeaderboardEntry>();
+
+  entries.forEach(e => {
+    const sName = (e.studentName || 'Student').trim();
+    const tTitle = (e.testTitle || 'Exam').trim();
+    if (!sName) return;
+
+    const key = `${sName.toLowerCase()}__${tTitle.toLowerCase()}`;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, { ...e, studentName: sName, testTitle: tTitle });
+    } else {
+      const pctCurrent = e.percentage || (e.totalMarks ? (e.score / e.totalMarks) * 100 : 0);
+      const pctExisting = existing.percentage || (existing.totalMarks ? (existing.score / existing.totalMarks) * 100 : 0);
+
+      if (pctCurrent > pctExisting) {
+        map.set(key, { ...e, studentName: sName, testTitle: tTitle });
+      } else if (Math.abs(pctCurrent - pctExisting) < 0.01) {
+        // Equal percentage: student with LESS time taken gets higher rank
+        const timeA = e.timeTakenSeconds ?? parseTimeToSeconds(e.timeTakenFormatted);
+        const timeB = existing.timeTakenSeconds ?? parseTimeToSeconds(existing.timeTakenFormatted);
+        if (timeA < timeB) {
+          map.set(key, { ...e, studentName: sName, testTitle: tTitle });
+        }
+      }
+    }
+  });
+
+  const list = Array.from(map.values());
+
+  list.sort((a, b) => {
+    // 1. Percentage / Accuracy (Descending)
+    const pctA = a.percentage || (a.totalMarks ? (a.score / a.totalMarks) * 100 : 0);
+    const pctB = b.percentage || (b.totalMarks ? (b.score / b.totalMarks) * 100 : 0);
+    if (Math.abs(pctB - pctA) > 0.01) {
+      return pctB - pctA;
+    }
+
+    // 2. Score (Descending)
+    const scoreA = a.score || 0;
+    const scoreB = b.score || 0;
+    if (Math.abs(scoreB - scoreA) > 0.01) {
+      return scoreB - scoreA;
+    }
+
+    // 3. Time taken (Ascending - LEAST TIME TAKEN = TOP RANK)
+    const timeA = a.timeTakenSeconds ?? parseTimeToSeconds(a.timeTakenFormatted);
+    const timeB = b.timeTakenSeconds ?? parseTimeToSeconds(b.timeTakenFormatted);
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+
+    // 4. Stable ID sort
+    return (b.id || '').localeCompare(a.id || '');
+  });
+
+  list.forEach((item, index) => {
+    item.rank = index + 1;
+  });
+
+  return list;
+}
+
 function notifyTests() {
   testsSubscribers.forEach(cb => cb([...memoryTests]));
 }
@@ -123,7 +200,31 @@ function notifySettings() {
   settingsSubscribers.forEach(cb => cb({ ...memorySettings }));
 }
 function notifyLeaderboard() {
-  leaderboardSubscribers.forEach(cb => cb([...memoryLeaderboard]));
+  const combined: LeaderboardEntry[] = [...memoryLeaderboard];
+  memoryResults.forEach(r => {
+    const exists = combined.some(l => l.id === `lb-${r.id}` || l.id === r.id);
+    if (!exists && r.studentName) {
+      combined.push({
+        id: `lb-${r.id}`,
+        studentName: r.studentName,
+        testTitle: r.testTitle,
+        score: r.score,
+        totalMarks: r.totalMarks,
+        percentage: r.percentage,
+        timeTakenSeconds: r.timeTakenSeconds,
+        timeTakenFormatted: `${Math.floor((r.timeTakenSeconds || 0) / 60)}m ${(r.timeTakenSeconds || 0) % 60}s`,
+        date: (r.submittedAt || new Date().toISOString()).split('T')[0]
+      });
+    }
+  });
+
+  const ranked = sortAndRankLeaderboard(combined);
+  memoryLeaderboard = ranked;
+  try {
+    localStorage.setItem('cached_leaderboard_data', JSON.stringify(ranked));
+  } catch (e) {}
+
+  leaderboardSubscribers.forEach(cb => cb([...ranked]));
 }
 function notifyResults() {
   resultsSubscribers.forEach(cb => cb([...memoryResults]));
@@ -268,12 +369,43 @@ export function subscribeToSettings(callback: Callback<SiteSettings>): () => voi
 // 4. Subscribe to Leaderboard
 export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): () => void {
   leaderboardSubscribers.add(callback);
-  callback([...memoryLeaderboard]);
+
+  const getCompiled = (): LeaderboardEntry[] => {
+    const combined: LeaderboardEntry[] = [...memoryLeaderboard];
+    memoryResults.forEach(r => {
+      const exists = combined.some(l => l.id === `lb-${r.id}` || l.id === r.id);
+      if (!exists && r.studentName) {
+        combined.push({
+          id: `lb-${r.id}`,
+          studentName: r.studentName,
+          testTitle: r.testTitle,
+          score: r.score,
+          totalMarks: r.totalMarks,
+          percentage: r.percentage,
+          timeTakenSeconds: r.timeTakenSeconds,
+          timeTakenFormatted: `${Math.floor((r.timeTakenSeconds || 0) / 60)}m ${(r.timeTakenSeconds || 0) % 60}s`,
+          date: (r.submittedAt || new Date().toISOString()).split('T')[0]
+        });
+      }
+    });
+
+    return sortAndRankLeaderboard(combined);
+  };
+
+  // Immediate synchronous notification from cache
+  callback(getCompiled());
 
   if (isSupabaseConfigured) {
     fetchSupabaseLeaderboard().then(supaLb => {
       if (supaLb && supaLb.length > 0) {
         memoryLeaderboard = supaLb;
+        notifyLeaderboard();
+      }
+    }).catch(e => {});
+
+    fetchSupabaseResults().then(supaRes => {
+      if (supaRes && supaRes.length > 0) {
+        memoryResults = supaRes;
         notifyLeaderboard();
       }
     }).catch(e => {});
@@ -284,9 +416,9 @@ export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): 
     snapshot.forEach(docSnap => {
       entries.push({ id: docSnap.id, ...docSnap.data() } as LeaderboardEntry);
     });
-    entries.sort((a, b) => b.percentage - a.percentage);
-    entries.forEach((e, i) => { e.rank = i + 1; });
-    memoryLeaderboard = entries;
+    if (entries.length > 0) {
+      memoryLeaderboard = entries;
+    }
     notifyLeaderboard();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'leaderboard');
@@ -298,7 +430,7 @@ export function subscribeToLeaderboard(callback: Callback<LeaderboardEntry[]>): 
         }
       });
     } else {
-      callback([...memoryLeaderboard]);
+      callback(getCompiled());
     }
   });
 
@@ -936,6 +1068,7 @@ export async function submitTestResult(result: ExamResult): Promise<string> {
     score: result.score,
     totalMarks: result.totalMarks,
     percentage: result.percentage,
+    timeTakenSeconds: result.timeTakenSeconds,
     timeTakenFormatted: `${Math.floor(result.timeTakenSeconds / 60)}m ${result.timeTakenSeconds % 60}s`,
     date: new Date().toISOString().split('T')[0],
   };
@@ -1145,8 +1278,6 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     snapshot.forEach(docSnap => {
       list.push({ id: docSnap.id, ...docSnap.data() } as LeaderboardEntry);
     });
-    list.sort((a, b) => b.percentage - a.percentage);
-    list.forEach((e, i) => { e.rank = i + 1; });
     if (list.length > 0) {
       memoryLeaderboard = list;
       fetchedFirestore = true;
@@ -1164,5 +1295,6 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     } catch (e) {}
   }
 
+  notifyLeaderboard();
   return memoryLeaderboard;
 }

@@ -2,6 +2,33 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
 
+export const GoogleAdSenseManager: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  useEffect(() => {
+    // AdSense policy: Do not run ads during active test taking
+    if (!settings.adsEnabled || !settings.adsenseClientId || location.pathname.startsWith('/exam/')) {
+      const existingScript = document.getElementById('google-adsense-script');
+      if (existingScript) existingScript.remove();
+      return;
+    }
+
+    const SCRIPT_ID = 'google-adsense-script';
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsenseClientId.trim()}`;
+      document.head.appendChild(script);
+    }
+  }, [settings.adsenseClientId, settings.adsEnabled, location.pathname]);
+
+  return null;
+};
+
 export const InPagePushAdManager: React.FC = () => {
   const location = useLocation();
   const { settings } = useSettings();
