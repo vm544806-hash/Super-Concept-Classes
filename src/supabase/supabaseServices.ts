@@ -901,69 +901,97 @@ export async function fetchSupabaseResults(): Promise<ExamResult[] | null> {
   }
   return (data || []).map((row: any) => ({
     id: row.id,
-    testId: row.testId || row.test_id || '',
-    testTitle: row.testTitle || row.test_title || '',
+    testId: row.testId || row.test_id || row.testid || '',
+    testTitle: row.testTitle || row.test_title || row.testtitle || '',
     category: row.category || 'Class 10th',
-    studentName: row.studentName || row.userName || row.user_name || row.userId || 'Student',
-    studentEmail: row.studentEmail || row.userEmail || row.user_email || '',
-    studentMobile: row.studentMobile || row.userMobile || row.user_mobile || '',
+    studentName: row.studentName || row.student_name || row.userName || row.user_name || row.userId || row.studentname || 'Candidate',
+    studentEmail: row.studentEmail || row.student_email || row.userEmail || row.user_email || '',
+    studentMobile: row.studentMobile || row.student_mobile || row.userMobile || row.user_mobile || '',
     score: Number(row.score) || 0,
-    totalMarks: Number(row.totalMarks || row.total_marks) || 100,
+    totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
     percentage: Number(row.percentage) || 0,
     correctCount: Number(row.correctAnswers || row.correct_answers || row.correctCount) || 0,
     wrongCount: Number(row.wrongAnswers || row.wrong_answers || row.wrongCount) || 0,
     skippedCount: Number(row.unanswered || row.skippedCount || row.skipped_count) || 0,
     totalQuestions: Number(row.totalQuestions || row.total_questions) || 0,
-    timeTakenSeconds: Number(row.timeTakenSeconds || row.time_taken_seconds) || 0,
-    submittedAt: row.submittedAt || row.submitted_at || new Date().toISOString(),
+    timeTakenSeconds: Number(row.timeTakenSeconds || row.time_taken_seconds || row.timetakenseconds) || 0,
+    submittedAt: row.submittedAt || row.submitted_at || row.submittedat || new Date().toISOString(),
     testVersion: Number(row.testVersion || row.test_version) || 1,
-    responses: typeof row.userAnswers === 'string' ? JSON.parse(row.userAnswers) : (row.userAnswers || row.responses || {})
+    responses: typeof row.userAnswers === 'string' ? JSON.parse(row.userAnswers) : (row.userAnswers || row.user_answers || row.responses || {})
   })) as ExamResult[];
 }
 
 export async function saveSupabaseResult(r: ExamResult): Promise<boolean> {
   if (!supabase) return false;
   const testIdVal = r.testId && r.testId.trim() !== '' ? r.testId : null;
+  const timeSecs = Number(r.timeTakenSeconds) || 0;
+  
   const payload: any = {
     id: r.id,
-    userId: r.studentName || 'Student',
-    userName: r.studentName || 'Student',
+    userId: r.studentName || 'Candidate',
+    userName: r.studentName || 'Candidate',
+    user_name: r.studentName || 'Candidate',
     userEmail: r.studentEmail || '',
-    studentName: r.studentName || 'Student',
+    user_email: r.studentEmail || '',
+    studentName: r.studentName || 'Candidate',
+    student_name: r.studentName || 'Candidate',
     studentEmail: r.studentEmail || '',
+    student_email: r.studentEmail || '',
     studentMobile: r.studentMobile || '',
+    student_mobile: r.studentMobile || '',
     testId: testIdVal,
+    test_id: testIdVal,
     testTitle: r.testTitle || '',
+    test_title: r.testTitle || '',
     category: r.category || 'Class 10th',
     score: r.score || 0,
     totalMarks: r.totalMarks || 100,
+    total_marks: r.totalMarks || 100,
     percentage: r.percentage || 0,
     passed: (r.percentage || 0) >= 40,
     totalQuestions: r.totalQuestions || 0,
+    total_questions: r.totalQuestions || 0,
     correctAnswers: r.correctCount || 0,
+    correct_answers: r.correctCount || 0,
     wrongAnswers: r.wrongCount || 0,
+    wrong_answers: r.wrongCount || 0,
     unanswered: r.skippedCount || 0,
-    timeTakenSeconds: r.timeTakenSeconds || 0,
+    timeTakenSeconds: timeSecs,
+    time_taken_seconds: timeSecs,
     submittedAt: r.submittedAt || new Date().toISOString(),
+    submitted_at: r.submittedAt || new Date().toISOString(),
     testVersion: r.testVersion || 1,
-    userAnswers: r.responses || {}
+    test_version: r.testVersion || 1,
+    userAnswers: r.responses || {},
+    user_answers: r.responses || {}
   };
+
   const { error } = await supabase.from('results').upsert(payload);
   if (!error) return true;
 
+  console.warn('Supabase saveResult full payload error, attempting fallback:', error);
   const corePayload: any = {
     id: r.id,
-    studentName: r.studentName || 'Student',
+    studentName: r.studentName || 'Candidate',
+    student_name: r.studentName || 'Candidate',
     testId: testIdVal,
+    test_id: testIdVal,
+    testTitle: r.testTitle || '',
+    test_title: r.testTitle || '',
     score: r.score || 0,
     totalMarks: r.totalMarks || 100,
-    percentage: r.percentage || 0
+    total_marks: r.totalMarks || 100,
+    percentage: r.percentage || 0,
+    timeTakenSeconds: timeSecs,
+    time_taken_seconds: timeSecs,
+    submittedAt: r.submittedAt || new Date().toISOString(),
+    submitted_at: r.submittedAt || new Date().toISOString()
   };
   const retry = await supabase.from('results').upsert(corePayload);
   if (!retry.error) return true;
 
   if (testIdVal !== null) {
-    const noFkPayload = { ...corePayload, testId: null };
+    const noFkPayload = { ...corePayload, testId: null, test_id: null };
     const retryNoFk = await supabase.from('results').upsert(noFkPayload);
     if (!retryNoFk.error) return true;
   }
@@ -998,45 +1026,74 @@ export async function fetchSupabaseLeaderboard(): Promise<LeaderboardEntry[] | n
     console.error('Supabase fetch leaderboard error:', error);
     return null;
   }
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    studentName: row.userName || row.studentName || row.userId || 'Student',
-    testTitle: row.testTitle || row.test_title || 'Exam',
-    score: Number(row.score) || 0,
-    totalMarks: Number(row.totalMarks || row.total_marks) || 100,
-    percentage: Number(row.percentage) || 0,
-    rank: Number(row.rank) || 1,
-    timeTakenFormatted: row.timeTakenFormatted || '',
-    date: row.submittedAt || row.date || new Date().toISOString().split('T')[0]
-  })) as LeaderboardEntry[];
+  return (data || []).map((row: any) => {
+    const timeSec = Number(row.time_taken_seconds || row.timeTakenSeconds || row.timetakenseconds) || 0;
+    const scoreVal = Number(row.score) || 0;
+    const totalMarksVal = Number(row.total_marks || row.totalMarks || row.totalmarks) || 100;
+    const pctVal = Number(row.percentage) || (totalMarksVal ? (scoreVal / totalMarksVal) * 100 : 0);
+    const timeFmt = row.time_taken_formatted || row.timeTakenFormatted || row.timetakenformatted || (timeSec ? `${Math.floor(timeSec / 60)}m ${timeSec % 60}s` : '');
+
+    return {
+      id: row.id,
+      studentName: row.student_name || row.studentName || row.user_name || row.userName || row.userId || 'Candidate',
+      testTitle: row.test_title || row.testTitle || row.testtitle || 'Exam',
+      score: scoreVal,
+      totalMarks: totalMarksVal,
+      percentage: Math.round(pctVal * 10) / 10,
+      rank: Number(row.rank) || 1,
+      timeTakenSeconds: timeSec,
+      timeTakenFormatted: timeFmt,
+      date: row.submitted_at || row.submittedAt || row.date || new Date().toISOString().split('T')[0]
+    };
+  }) as LeaderboardEntry[];
 }
 
 export async function saveSupabaseLeaderboard(lb: LeaderboardEntry): Promise<boolean> {
   if (!supabase) return false;
   const testIdVal = lb.id && lb.id.trim() !== '' ? lb.id : null;
+  const timeSecs = Number(lb.timeTakenSeconds) || 0;
+  const timeFmt = lb.timeTakenFormatted || (timeSecs ? `${Math.floor(timeSecs / 60)}m ${timeSecs % 60}s` : '0m 0s');
+
   const payload: any = {
     id: lb.id,
-    userId: lb.studentName || 'Student',
-    userName: lb.studentName || 'Student',
-    studentName: lb.studentName || 'Student',
+    userId: lb.studentName || 'Candidate',
+    userName: lb.studentName || 'Candidate',
+    user_name: lb.studentName || 'Candidate',
+    studentName: lb.studentName || 'Candidate',
+    student_name: lb.studentName || 'Candidate',
     testId: testIdVal,
+    test_id: testIdVal,
     testTitle: lb.testTitle || 'Exam',
+    test_title: lb.testTitle || 'Exam',
     score: lb.score || 0,
     totalMarks: lb.totalMarks || 100,
+    total_marks: lb.totalMarks || 100,
     percentage: lb.percentage || 0,
     rank: lb.rank || 1,
-    timeTakenFormatted: lb.timeTakenFormatted || '',
-    submittedAt: lb.date || new Date().toISOString()
+    timeTakenSeconds: timeSecs,
+    time_taken_seconds: timeSecs,
+    timeTakenFormatted: timeFmt,
+    time_taken_formatted: timeFmt,
+    submittedAt: lb.date || new Date().toISOString(),
+    submitted_at: lb.date || new Date().toISOString()
   };
+
   const { error } = await supabase.from('leaderboard').upsert(payload);
   if (!error) return true;
 
+  console.warn('Supabase saveLeaderboard full payload error, attempting fallback:', error);
   const corePayload: any = {
     id: lb.id,
-    userName: lb.studentName || 'Student',
+    studentName: lb.studentName || 'Candidate',
+    student_name: lb.studentName || 'Candidate',
     testTitle: lb.testTitle || 'Exam',
+    test_title: lb.testTitle || 'Exam',
     score: lb.score || 0,
-    totalMarks: lb.totalMarks || 100
+    totalMarks: lb.totalMarks || 100,
+    total_marks: lb.totalMarks || 100,
+    percentage: lb.percentage || 0,
+    timeTakenFormatted: timeFmt,
+    time_taken_formatted: timeFmt
   };
   const retry = await supabase.from('leaderboard').upsert(corePayload);
   return !retry.error;

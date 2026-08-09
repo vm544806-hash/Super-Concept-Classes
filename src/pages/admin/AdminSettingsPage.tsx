@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { Settings, Save, CheckCircle2, ShieldCheck, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react';
+import { Settings, Save, CheckCircle2, ShieldCheck, ToggleLeft, ToggleRight, Sparkles, Database } from 'lucide-react';
 
 export const AdminSettingsPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -53,6 +53,111 @@ export const AdminSettingsPage: React.FC = () => {
             <span>Settings updated successfully! Changes applied site-wide.</span>
           </div>
         )}
+
+        {/* Supabase SQL Editor Code Box */}
+        <div className="mb-8 p-6 bg-slate-900 border border-purple-500/30 rounded-2xl max-w-3xl space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 className="font-extrabold text-sm text-purple-300 flex items-center gap-2">
+              <Database className="w-4 h-4 text-purple-400" />
+              <span>Supabase SQL Setup Query (Auto Dual-Sync Schema)</span>
+            </h3>
+            <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded border border-purple-500/30">
+              Run in Supabase SQL Editor
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Copy and paste this SQL query into your Supabase Dashboard &gt; <strong>SQL Editor</strong> &gt; <strong>Run</strong> to create or update all tables for Leaderboard, Results, Questions, Tests, and Notices:
+          </p>
+          <pre className="p-4 bg-slate-950 rounded-xl text-[11px] font-mono text-emerald-400 overflow-x-auto border border-slate-800 max-h-56 select-all">
+{`-- 1. Leaderboard Table
+CREATE TABLE IF NOT EXISTS public.leaderboard (
+  id TEXT PRIMARY KEY,
+  student_name TEXT,
+  studentName TEXT,
+  user_name TEXT,
+  userName TEXT,
+  user_id TEXT,
+  userId TEXT,
+  test_id TEXT,
+  testId TEXT,
+  test_title TEXT,
+  testTitle TEXT,
+  score NUMERIC DEFAULT 0,
+  total_marks NUMERIC DEFAULT 100,
+  totalMarks NUMERIC DEFAULT 100,
+  percentage NUMERIC DEFAULT 0,
+  rank INTEGER DEFAULT 1,
+  time_taken_seconds INTEGER DEFAULT 0,
+  timeTakenSeconds INTEGER DEFAULT 0,
+  time_taken_formatted TEXT,
+  timeTakenFormatted TEXT,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  submittedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Results Table
+CREATE TABLE IF NOT EXISTS public.results (
+  id TEXT PRIMARY KEY,
+  student_name TEXT,
+  studentName TEXT,
+  student_email TEXT,
+  studentEmail TEXT,
+  student_mobile TEXT,
+  studentMobile TEXT,
+  test_id TEXT,
+  testId TEXT,
+  test_title TEXT,
+  testTitle TEXT,
+  category TEXT,
+  score NUMERIC DEFAULT 0,
+  total_marks NUMERIC DEFAULT 100,
+  totalMarks NUMERIC DEFAULT 100,
+  percentage NUMERIC DEFAULT 0,
+  passed BOOLEAN DEFAULT true,
+  total_questions INTEGER DEFAULT 0,
+  correct_answers INTEGER DEFAULT 0,
+  wrong_answers INTEGER DEFAULT 0,
+  unanswered INTEGER DEFAULT 0,
+  time_taken_seconds INTEGER DEFAULT 0,
+  timeTakenSeconds INTEGER DEFAULT 0,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  submittedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  test_version INTEGER DEFAULT 1,
+  user_answers JSONB,
+  userAnswers JSONB
+);
+
+-- 3. Notices Table
+CREATE TABLE IF NOT EXISTS public.notices (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT,
+  date TEXT,
+  badge TEXT,
+  link_url TEXT,
+  link_text TEXT,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- 4. Questions Table
+CREATE TABLE IF NOT EXISTS public.questions (
+  id TEXT PRIMARY KEY,
+  test_id TEXT,
+  testId TEXT,
+  question_text TEXT,
+  questionText TEXT,
+  options JSONB,
+  correct_option INTEGER,
+  correctOption INTEGER,
+  explanation TEXT,
+  marks NUMERIC DEFAULT 2,
+  subject TEXT,
+  topic TEXT,
+  image_url TEXT,
+  imageUrl TEXT
+);`}
+          </pre>
+        </div>
 
         <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
           
