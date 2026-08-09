@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Test, Question, UserResponse, StudentInfo, ExamResult } from '../types';
 import { getTestById, getQuestionsByTestId, submitTestResult, checkExistingAttempt } from '../firebase/services';
 import { ExamHeader } from '../components/exam/ExamHeader';
@@ -7,11 +7,14 @@ import { QuestionPalette } from '../components/exam/QuestionPalette';
 import { QuestionCard } from '../components/exam/QuestionCard';
 import { SubmitModal } from '../components/exam/SubmitModal';
 import { calculateScoreAndStats } from '../utils/helpers';
-import { AlertCircle, Loader2, Award, Home, ShieldAlert } from 'lucide-react';
+import { computeTestStatus, formatDateTime, getTimeDifferenceText } from '../utils/testHelpers';
+import { AlertCircle, Loader2, Award, Home, ShieldAlert, BookOpen, Clock, CheckCircle2, ArrowLeft } from 'lucide-react';
 
 export const ExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSolutionModeRequested = searchParams.get('mode') === 'solution';
 
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -328,6 +331,150 @@ export const ExamPage: React.FC = () => {
         >
           Return Home
         </button>
+      </div>
+    );
+  }
+
+  const testStatus = computeTestStatus(test);
+
+  // 1. Upcoming Scheduled Test Screen
+  if (testStatus === 'upcoming' && !isSolutionModeRequested) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-amber-500/40 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+            <Clock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-black text-white mb-2">Test Scheduled (समय अभी पूरा नहीं हुआ)</h2>
+          <p className="text-xs text-slate-300 mb-6 leading-relaxed">
+            This test paper is scheduled to automatically go <strong>LIVE</strong> on{' '}
+            <span className="text-amber-400 font-bold">{formatDateTime(test.startTime)}</span> (in {getTimeDifferenceText(test.startTime)}). Candidate exam entry will open at that exact time.
+          </p>
+
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Home className="w-4 h-4" />
+            <span>Return to Test Portal</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Read-Only Solution Mode View for Expired / Solution Requests
+  if (isSolutionModeRequested || testStatus === 'expired') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+        {/* Solution Header Bar */}
+        <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl hover:bg-slate-700 cursor-pointer transition-all"
+              title="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-400 uppercase tracking-wide bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                  Solution Paper View
+                </span>
+                {testStatus === 'expired' && (
+                  <span className="text-[10px] font-extrabold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                    Expired Exam
+                  </span>
+                )}
+              </div>
+              <h1 className="text-sm sm:text-base font-bold text-white line-clamp-1">{test.title}</h1>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-extrabold rounded-xl flex items-center gap-1.5 cursor-pointer"
+          >
+            <Home className="w-4 h-4" />
+            <span>Home</span>
+          </button>
+        </header>
+
+        {/* Questions & Solutions List */}
+        <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6 pb-16">
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between text-xs text-slate-400">
+            <span>Total Questions: <strong className="text-white">{questions.length}</strong></span>
+            <span>Total Marks: <strong className="text-white">{test.totalMarks}</strong></span>
+            <span>Negative Mark: <strong className="text-rose-400">-{test.negativeMarking}</strong></span>
+          </div>
+
+          {questions.map((q, idx) => (
+            <div key={q.id || idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 bg-blue-600/20 text-blue-400 font-extrabold text-xs rounded-lg flex items-center justify-center border border-blue-500/30">
+                    Q{idx + 1}
+                  </span>
+                  <span className="text-xs text-slate-400 uppercase font-semibold">
+                    {q.subject || test.category} {q.topic ? `• ${q.topic}` : ''}
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-400 font-extrabold bg-emerald-950 border border-emerald-800/80 px-2 py-0.5 rounded">
+                  +{q.marks || test.marksPerQuestion || 2} Marks
+                </span>
+              </div>
+
+              {/* Question Text */}
+              <p className="text-sm font-semibold text-slate-100 leading-relaxed whitespace-pre-wrap">
+                {q.questionText}
+              </p>
+
+              {/* Question Image if any */}
+              {q.imageUrl && (
+                <img src={q.imageUrl} alt="Question Diagram" className="max-h-60 rounded-xl border border-slate-800 object-contain my-2" />
+              )}
+
+              {/* Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                {q.options.map((opt, optIdx) => {
+                  const isCorrect = optIdx === q.correctOption;
+                  return (
+                    <div
+                      key={optIdx}
+                      className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                        isCorrect
+                          ? 'bg-emerald-950/60 border-emerald-500 text-emerald-200'
+                          : 'bg-slate-800/60 border-slate-700/60 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center ${
+                          isCorrect ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-slate-300'
+                        }`}>
+                          {String.fromCharCode(65 + optIdx)}
+                        </span>
+                        <span>{opt}</span>
+                      </div>
+                      {isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Explanation Box */}
+              {q.explanation && (
+                <div className="p-3.5 bg-blue-950/30 border border-blue-800/60 rounded-xl text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 text-blue-400 font-extrabold uppercase text-[10px]">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Answer Explanation (उत्तर व्याख्या)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">{q.explanation}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </main>
       </div>
     );
   }

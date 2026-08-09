@@ -258,15 +258,6 @@ export function subscribeToTests(callback: Callback<Test[]>, onlyPublished = fal
   };
   testsSubscribers.add(filteredCallback);
 
-  if (isSupabaseConfigured) {
-    fetchSupabaseTests().then(supaTests => {
-      if (supaTests && supaTests.length > 0) {
-        memoryTests = supaTests;
-        notifyTests();
-      }
-    }).catch(err => console.error('Supabase fetch tests error:', err));
-  }
-
   filteredCallback(memoryTests);
 
   const unsub = onSnapshot(collection(db, 'tests'), (snapshot) => {
@@ -274,11 +265,12 @@ export function subscribeToTests(callback: Callback<Test[]>, onlyPublished = fal
     snapshot.forEach(docSnap => {
       list.push({ id: docSnap.id, ...docSnap.data() } as Test);
     });
+    // Update memory cache with latest Firestore documents
     memoryTests = list;
     notifyTests();
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, 'tests');
-    if (isSupabaseConfigured) {
+    if (memoryTests.length === 0 && isSupabaseConfigured) {
       fetchSupabaseTests().then(supaTests => {
         if (supaTests && supaTests.length > 0) {
           memoryTests = supaTests;
@@ -613,6 +605,10 @@ export async function saveTest(testData: Partial<Test> & { id?: string }, isNew:
     updatePayload.totalMarks = testData.totalMarks !== undefined ? Number(testData.totalMarks) : 100;
     updatePayload.negativeMarking = testData.negativeMarking !== undefined ? Number(testData.negativeMarking) : 0;
     updatePayload.passingMarks = testData.passingMarks !== undefined ? Number(testData.passingMarks) : 40;
+    updatePayload.marksPerQuestion = testData.marksPerQuestion !== undefined ? Number(testData.marksPerQuestion) : undefined;
+    updatePayload.startTime = testData.startTime || '';
+    updatePayload.endTime = testData.endTime || '';
+    updatePayload.autoSchedule = Boolean(testData.autoSchedule);
     updatePayload.instructions = testData.instructions || [];
     updatePayload.isPublished = testData.isPublished !== undefined ? Boolean(testData.isPublished) : true;
     updatePayload.isPopular = Boolean(testData.isPopular);
@@ -633,6 +629,10 @@ export async function saveTest(testData: Partial<Test> & { id?: string }, isNew:
     if (testData.totalMarks !== undefined) updatePayload.totalMarks = Number(testData.totalMarks);
     if (testData.negativeMarking !== undefined) updatePayload.negativeMarking = Number(testData.negativeMarking);
     if (testData.passingMarks !== undefined) updatePayload.passingMarks = Number(testData.passingMarks);
+    if (testData.marksPerQuestion !== undefined) updatePayload.marksPerQuestion = Number(testData.marksPerQuestion);
+    if (testData.startTime !== undefined) updatePayload.startTime = testData.startTime;
+    if (testData.endTime !== undefined) updatePayload.endTime = testData.endTime;
+    if (testData.autoSchedule !== undefined) updatePayload.autoSchedule = Boolean(testData.autoSchedule);
     if (testData.instructions !== undefined) updatePayload.instructions = testData.instructions;
     if (testData.isPublished !== undefined) updatePayload.isPublished = Boolean(testData.isPublished);
     if (testData.isPopular !== undefined) updatePayload.isPopular = Boolean(testData.isPopular);
@@ -665,10 +665,33 @@ export async function saveTest(testData: Partial<Test> & { id?: string }, isNew:
     handleFirestoreError(err, OperationType.WRITE, `tests/${testId}`);
   }
 
+  // Automatic Notice Post for Live / Scheduled Test Alerts
+  try {
+    if (fullTest.isPublished) {
+      const isScheduled = fullTest.autoSchedule && fullTest.startTime;
+      const noticeTitle = isNew
+        ? `📢 New Exam Added: ${fullTest.title}`
+        : `🚀 Exam Updated / Live: ${fullTest.title}`;
+      
+      const noticeContent = isScheduled
+        ? `A new test "${fullTest.title}" (${fullTest.category}) has been scheduled to go live on ${fullTest.startTime.replace('T', ' ')}. Total Questions: ${fullTest.totalQuestions || 10}, Time: ${fullTest.durationMins} mins.`
+        : `Test paper "${fullTest.title}" (${fullTest.category}) is now active and live! Total Questions: ${fullTest.totalQuestions || 10}, Time: ${fullTest.durationMins} mins.`;
+
+      saveNotice({
+        title: noticeTitle,
+        content: noticeContent,
+        category: 'Exam Alert',
+        isImportant: true,
+        linkUrl: `/test/${testId}`
+      }, true).catch(() => {});
+    }
+  } catch (e) {}
+
   return testId;
 }
 
 export async function deleteTest(testId: string): Promise<void> {
+  const deletedTest = memoryTests.find(t => t.id === testId);
   memoryTests = memoryTests.filter(t => t.id !== testId);
   memoryQuestions = memoryQuestions.filter(q => q.testId !== testId);
   notifyTests();
@@ -688,6 +711,17 @@ export async function deleteTest(testId: string): Promise<void> {
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `tests/${testId}`);
   }
+
+  // Auto Notice on Delete
+  try {
+    const title = deletedTest?.title || testId;
+    saveNotice({
+      title: `ℹ️ Exam Archived / Removed`,
+      content: `The test paper "${title}" has been removed or archived by administrator.`,
+      category: 'Notification',
+      isImportant: false
+    }, true).catch(() => {});
+  } catch (e) {}
 }
 
 export async function getQuestionsByTestId(testId: string): Promise<Question[]> {

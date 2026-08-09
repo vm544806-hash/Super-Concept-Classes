@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Test, StudentInfo, ExamResult } from '../types';
 import { subscribeToTests, checkExistingAttempt } from '../firebase/services';
+import { computeTestStatus, formatDateTime, getTimeDifferenceText } from '../utils/testHelpers';
 import { 
   Clock, 
   HelpCircle, 
@@ -17,7 +18,10 @@ import {
   ShieldCheck,
   X,
   FileCheck,
-  Award as AwardIcon
+  Award as AwardIcon,
+  Calendar,
+  Eye,
+  BookOpen
 } from 'lucide-react';
 import { getDifficultyColor } from '../utils/helpers';
 
@@ -189,6 +193,40 @@ export const TestDetailsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Schedule Status Notice Banner */}
+            {(() => {
+              const status = computeTestStatus(test);
+              if (status === 'upcoming') {
+                return (
+                  <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-amber-800 dark:text-amber-200">
+                    <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-xs sm:text-sm">
+                      <strong className="block font-bold text-amber-900 dark:text-amber-100 mb-0.5">
+                        ⏰ Test Paper Scheduled for Future Live Session
+                      </strong>
+                      This mock exam paper will automatically go <strong>LIVE</strong> on{' '}
+                      <span className="underline font-bold">{formatDateTime(test.startTime)}</span> (in {getTimeDifferenceText(test.startTime)}). Candidate registration and test submission will open at that exact set time.
+                    </div>
+                  </div>
+                );
+              }
+              if (status === 'expired') {
+                return (
+                  <div className="mb-6 p-4 bg-slate-200/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-2xl flex items-start gap-3 text-slate-700 dark:text-slate-300">
+                    <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="text-xs sm:text-sm">
+                      <strong className="block font-bold text-slate-900 dark:text-slate-100 mb-0.5">
+                        ⌛ Test Paper Has Expired (समय समाप्त / Expired Paper)
+                      </strong>
+                      The active testing period for this exam paper ended on{' '}
+                      <span className="font-bold">{formatDateTime(test.endTime)}</span>. New answer sheet submissions are disabled. You can view all questions, options, and answer explanations in Read-Only Solutions mode.
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {/* Instructions Section */}
             <div className="mb-8">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
@@ -210,14 +248,41 @@ export const TestDetailsPage: React.FC = () => {
               </ul>
             </div>
 
-            {/* Large Start Test Button */}
-            <button
-              onClick={() => setShowStartModal(true)}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
-            >
-              <Play className="w-6 h-6 fill-white" />
-              <span>Start Examination Now</span>
-            </button>
+            {/* Dynamic Action Button based on Status */}
+            {(() => {
+              const status = computeTestStatus(test);
+              if (status === 'upcoming') {
+                return (
+                  <button
+                    disabled
+                    className="w-full py-4 bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold text-base rounded-2xl border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-3 cursor-not-allowed opacity-90"
+                  >
+                    <Clock className="w-5 h-5 text-amber-500" />
+                    <span>Scheduled — Opens at {formatDateTime(test.startTime)}</span>
+                  </button>
+                );
+              }
+              if (status === 'expired') {
+                return (
+                  <button
+                    onClick={() => navigate(`/exam/${test.id}?mode=solution`)}
+                    className="w-full py-4 bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 hover:from-slate-800 hover:to-slate-950 text-white font-extrabold text-base sm:text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
+                  >
+                    <BookOpen className="w-6 h-6 text-amber-400" />
+                    <span>View Question Paper & Solutions (प्रश्न पत्र एवं उत्तर देखें)</span>
+                  </button>
+                );
+              }
+              return (
+                <button
+                  onClick={() => setShowStartModal(true)}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.01]"
+                >
+                  <Play className="w-6 h-6 fill-white" />
+                  <span>Start Examination Now</span>
+                </button>
+              );
+            })()}
           </div>
         </div>
 

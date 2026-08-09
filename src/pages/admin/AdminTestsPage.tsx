@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { Test, CategoryType } from '../../types';
 import { subscribeToTests, saveTest, deleteTest, resetTestAttempts } from '../../firebase/services';
 import { CATEGORIES } from '../../components/home/CategoryPills';
+import { computeTestStatus, formatDateTime, getTimeDifferenceText } from '../../utils/testHelpers';
 import { 
   Plus, 
   Edit3, 
@@ -20,7 +21,10 @@ import {
   RotateCcw,
   RefreshCw,
   Zap,
-  ShieldAlert
+  ShieldAlert,
+  Calendar,
+  AlertCircle,
+  Timer
 } from 'lucide-react';
 
 export const AdminTestsPage: React.FC = () => {
@@ -65,11 +69,15 @@ export const AdminTestsPage: React.FC = () => {
       totalMarks: 20,
       negativeMarking: 0.5,
       passingMarks: 8,
+      marksPerQuestion: 2,
       instructions: ['Read questions carefully before answering.'],
       isPublished: true,
       isPopular: false,
       isFeatured: false,
       allowRetake: false,
+      autoSchedule: false,
+      startTime: '',
+      endTime: '',
       testVersion: 1,
     });
     setShowModal(true);
@@ -159,38 +167,50 @@ export const AdminTestsPage: React.FC = () => {
           <div className="py-16 text-center text-slate-500">Loading tests...</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tests.map(test => (
-              <div
-                key={test.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-2.5 py-0.5 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold uppercase rounded">
-                        {test.category}
-                      </span>
-                      {test.allowRetake ? (
-                        <span className="px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold rounded">
-                          Multi-Attempt
+            {tests.map(test => {
+              const status = computeTestStatus(test);
+              return (
+                <div
+                  key={test.id}
+                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2.5 py-0.5 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold uppercase rounded">
+                          {test.category}
                         </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded">
-                          v{test.testVersion || 1}
-                        </span>
-                      )}
+
+                        {status === 'upcoming' && (
+                          <span className="px-2 py-0.5 bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold rounded flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-400" /> SCHEDULED
+                          </span>
+                        )}
+
+                        {status === 'expired' && (
+                          <span className="px-2 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-bold rounded flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-slate-400" /> EXPIRED
+                          </span>
+                        )}
+
+                        {status === 'live' && test.isPublished && (
+                          <span className="px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold rounded flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" /> LIVE
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleTogglePublish(test)}
+                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded cursor-pointer ${
+                          test.isPublished 
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
+                            : 'bg-rose-950 text-rose-300 border border-rose-800'
+                        }`}
+                      >
+                        {test.isPublished ? 'PUBLISHED' : 'DRAFT'}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleTogglePublish(test)}
-                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded cursor-pointer ${
-                        test.isPublished 
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
-                          : 'bg-rose-950 text-rose-300 border border-rose-800'
-                      }`}
-                    >
-                      {test.isPublished ? 'PUBLISHED' : 'DRAFT'}
-                    </button>
-                  </div>
 
                   <h3 className="font-bold text-base text-white mb-2 line-clamp-2">
                     {test.title}
@@ -253,7 +273,8 @@ export const AdminTestsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
 
@@ -325,37 +346,140 @@ export const AdminTestsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* Exam Options & Marks Configuration */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-800/50 rounded-2xl border border-slate-700/60">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Duration (Mins)</label>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Total Questions</label>
+                  <input
+                    type="number"
+                    value={editingTest.totalQuestions || 10}
+                    onChange={e => {
+                      const qCount = Number(e.target.value);
+                      const perQ = editingTest.marksPerQuestion || 2;
+                      setEditingTest({
+                        ...editingTest,
+                        totalQuestions: qCount,
+                        totalMarks: qCount * perQ
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Time (Minutes)</label>
                   <input
                     type="number"
                     value={editingTest.durationMins || 15}
                     onChange={e => setEditingTest({ ...editingTest, durationMins: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Total Marks</label>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Total Marks</label>
                   <input
                     type="number"
                     value={editingTest.totalMarks || 20}
                     onChange={e => setEditingTest({ ...editingTest, totalMarks: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Negative Mark</label>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Marks per Question</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editingTest.marksPerQuestion || 2}
+                    onChange={e => {
+                      const perQ = Number(e.target.value);
+                      const qCount = editingTest.totalQuestions || 10;
+                      setEditingTest({
+                        ...editingTest,
+                        marksPerQuestion: perQ,
+                        totalMarks: qCount * perQ
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Passing Marks</label>
+                  <input
+                    type="number"
+                    value={editingTest.passingMarks ?? 8}
+                    onChange={e => setEditingTest({ ...editingTest, passingMarks: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Negative Marking</label>
                   <input
                     type="number"
                     step="0.05"
                     value={editingTest.negativeMarking ?? 0.5}
                     onChange={e => setEditingTest({ ...editingTest, negativeMarking: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
+              </div>
+
+              {/* Automatic Live & Expiry Schedule Section */}
+              <div className="p-4 bg-purple-950/30 border border-purple-800/80 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-black text-purple-200 uppercase tracking-wide">
+                      Automated Live & Expiry Scheduling (समय सेट करें)
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-purple-300">
+                    <input
+                      type="checkbox"
+                      checked={editingTest.autoSchedule ?? false}
+                      onChange={e => setEditingTest({ ...editingTest, autoSchedule: e.target.checked })}
+                      className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                    />
+                    <span>Enable Schedule</span>
+                  </label>
+                </div>
+
+                {editingTest.autoSchedule && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-200 mb-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-emerald-400" /> Test Live Start Time (कब Live होगा)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={editingTest.startTime ? editingTest.startTime.slice(0, 16) : ''}
+                        onChange={e => setEditingTest({ ...editingTest, startTime: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        {editingTest.startTime ? `Will go Live on: ${formatDateTime(editingTest.startTime)}` : 'Leave blank for immediate Live'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-200 mb-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-rose-400" /> Test Auto Expiry Time (कब Expire होगा)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={editingTest.endTime ? editingTest.endTime.slice(0, 16) : ''}
+                        onChange={e => setEditingTest({ ...editingTest, endTime: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        {editingTest.endTime ? `Will Expire on: ${formatDateTime(editingTest.endTime)}` : 'Leave blank for lifetime active'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-6 pt-2">
@@ -366,7 +490,7 @@ export const AdminTestsPage: React.FC = () => {
                     onChange={e => setEditingTest({ ...editingTest, isPublished: e.target.checked })}
                     className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
                   />
-                  <span>Publish Immediately</span>
+                  <span>Publish Paper</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold">

@@ -126,68 +126,67 @@ export const VideoSliderAdManager: React.FC = () => {
   return null;
 };
 
-export const HomeBannerAd: React.FC = () => {
+export const Viralnex300x250Ad: React.FC = () => {
   const { settings } = useSettings();
   const location = useLocation();
 
   useEffect(() => {
-    // Only load banner on Home Page when ads are enabled
-    if (!settings.adsEnabled || location.pathname !== '/') return;
+    if (!settings.adsEnabled) return;
 
-    // Small delay ensures React has mounted <div id="ad-banner-300x250-container"> in the DOM
-    const timer = setTimeout(() => {
-      // 1. Load Mondiad Banner script
-      const SCRIPT_ID = 'mrmnd-banner-active-script';
-      const existingScript = document.getElementById(SCRIPT_ID);
-      if (existingScript) {
-        existingScript.remove();
-      }
+    const container = document.getElementById('viralnex-300x250-ad-box');
+    if (!container) return;
 
-      const script = document.createElement('script');
-      script.id = SCRIPT_ID;
-      script.async = true;
-      script.src = `https://ss.mrmnd.com/banner.js?cb=${Date.now()}`;
-      document.body.appendChild(script);
+    // Reset container contents
+    container.innerHTML = '';
 
-      // 2. Load PrizeFamily Ad script inside the 300x250 border box container
-      const PF_SCRIPT_ID = 'prizefamily-banner-ad-script';
-      const existingPf = document.getElementById(PF_SCRIPT_ID);
-      if (existingPf) {
-        existingPf.remove();
-      }
+    // Create Viralnex script tag
+    const script = document.createElement('script');
+    script.src = 'https://viralnex.com/serve_ad.php?id=23d9640a91284aff';
+    script.async = true;
 
-      const container = document.getElementById('ad-banner-300x250-container');
+    // Create noscript fallback tag
+    const noscript = document.createElement('noscript');
+    noscript.innerHTML = `<a href="https://viralnex.com/serve_nojs.php?id=23d9640a91284aff" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=23d9640a91284aff" alt="ad"/></a>`;
+
+    container.appendChild(script);
+    container.appendChild(noscript);
+
+    return () => {
       if (container) {
-        const pfScript = document.createElement('script');
-        pfScript.id = PF_SCRIPT_ID;
-        pfScript.async = true;
-        pfScript.referrerPolicy = 'no-referrer-when-downgrade';
-        pfScript.src = '//prizefamily.com/bqX.VbskdqGklO0/YDWwc_/UeNmE9DuGZfUelWktPNTjc/yONTzfEK5jN/jIkutfNlzSI/3TM/TBk/3-M-we';
-        container.appendChild(pfScript);
+        container.innerHTML = '';
       }
-    }, 100);
+    };
+  }, [settings.adsEnabled, location.pathname]);
 
-    return () => clearTimeout(timer);
-  }, [location.pathname, settings.adsEnabled]);
-
-  if (!settings.adsEnabled || location.pathname !== '/') return null;
+  if (!settings.adsEnabled) return null;
 
   return (
-    <div id="home-banner-ad" className="w-full my-8 flex flex-col justify-center items-center px-4">
-      {/* 300x250 Banner Ad Container */}
-      <div className="flex flex-col items-center justify-center p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md transition-all overflow-hidden max-w-full">
-        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold tracking-wider uppercase mb-1.5">
-          ADVERTISEMENT (300x250)
-        </span>
+    <div id="viralnex-ad-wrapper" className="w-full my-6 flex flex-col justify-center items-center px-4">
+      {/* 300x250 Border Box Container */}
+      <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] text-slate-900 dark:text-amber-300 font-black tracking-wider uppercase bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+            ADVERTISEMENT / विज्ञापन
+          </span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
+        </div>
         <div 
-          id="ad-banner-300x250-container"
-          className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-dashed border-slate-200/80 dark:border-slate-800 relative"
+          id="viralnex-300x250-ad-box"
+          className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
         >
-          <div data-mndbanid="559027ca-e9af-4d6f-99f9-256d9688d29f"></div>
         </div>
       </div>
     </div>
   );
+};
+
+export const HomeBannerAd: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
+
+  return <Viralnex300x250Ad />;
 };
 
 export const HomeInlineAd: React.FC = () => {

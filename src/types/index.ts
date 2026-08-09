@@ -41,6 +41,7 @@ export interface Test {
   totalMarks: number;
   negativeMarking: number; // e.g. 0.25 or 0.33 or 0
   passingMarks: number;
+  marksPerQuestion?: number; // Marks allocated per question
   instructions: string[];
   isPublished: boolean;
   isPopular?: boolean;
@@ -50,6 +51,9 @@ export interface Test {
   attemptsCount?: number;
   testVersion?: number; // Increments when admin modifies questions/re-enables exam
   allowRetake?: boolean; // If true, allows students to attempt multiple times
+  startTime?: string; // Live schedule start time (datetime-local / ISO)
+  endTime?: string; // Auto-expiration end time (datetime-local / ISO)
+  autoSchedule?: boolean; // Enable automated live and expiry scheduling
 }
 
 export interface StudentInfo {
