@@ -445,11 +445,11 @@ CREATE POLICY "Public full access to appointments" ON public.appointments FOR AL
 export async function checkSupabaseHealth(): Promise<{ ok: boolean; message: string; tables: Record<string, boolean> }> {
   if (!supabase) return { ok: false, message: 'Supabase client not initialized or missing credentials', tables: {} };
   
-  const tableList = ['tests', 'questions', 'notices', 'settings', 'results', 'leaderboard', 'appointments'];
+  const coreTables = ['tests', 'questions', 'notices', 'settings', 'results', 'leaderboard'];
   const tableStatus: Record<string, boolean> = {};
   let allGood = true;
 
-  for (const table of tableList) {
+  for (const table of coreTables) {
     try {
       const { error } = await supabase.from(table).select('id').limit(1);
       if (error) {
@@ -464,9 +464,17 @@ export async function checkSupabaseHealth(): Promise<{ ok: boolean; message: str
     }
   }
 
+  // Check optional appointments table
+  try {
+    const { error } = await supabase.from('appointments').select('id').limit(1);
+    tableStatus['appointments'] = !error;
+  } catch (e) {
+    tableStatus['appointments'] = false;
+  }
+
   return {
     ok: allGood,
-    message: allGood ? 'All 7 Supabase tables active & synchronized' : 'Some tables require SQL initialization script',
+    message: allGood ? 'All 6 Core Supabase tables active & synchronized' : 'Core tables missing - run Supabase SQL script',
     tables: tableStatus
   };
 }
@@ -854,6 +862,16 @@ export async function deleteSupabaseNotice(noticeId: string): Promise<boolean> {
   const { error } = await supabase.from('notices').delete().eq('id', noticeId);
   if (error) {
     console.error('Supabase delete notice error:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteAllSupabaseNotices(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from('notices').delete().neq('id', '___non_existent_id___');
+  if (error) {
+    console.error('Supabase delete all notices error:', error);
     return false;
   }
   return true;

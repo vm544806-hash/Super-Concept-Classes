@@ -28,6 +28,7 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminTestsPage } from './pages/admin/AdminTestsPage';
 import { AdminQuestionsPage } from './pages/admin/AdminQuestionsPage';
 import { AdminResultsPage } from './pages/admin/AdminResultsPage';
+import { AdminNoticesPage } from './pages/admin/AdminNoticesPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 // Protected Route Component for Admin
@@ -102,6 +103,14 @@ export default function App() {
                     element={
                       <ProtectedAdminRoute>
                         <AdminResultsPage />
+                      </ProtectedAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/notices"
+                    element={
+                      <ProtectedAdminRoute>
+                        <AdminNoticesPage />
                       </ProtectedAdminRoute>
                     }
                   />

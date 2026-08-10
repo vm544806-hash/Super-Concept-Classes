@@ -21,6 +21,7 @@ import {
   saveSupabaseAppointment,
   saveSupabaseNotice,
   deleteSupabaseNotice,
+  deleteAllSupabaseNotices,
   saveSupabaseResult,
   deleteSupabaseResult,
   saveSupabaseSettings,
@@ -1044,6 +1045,23 @@ export async function deleteNotice(noticeId: string): Promise<void> {
     await deleteDoc(doc(db, 'notices', noticeId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `notices/${noticeId}`);
+  }
+}
+
+export async function deleteAllNotices(): Promise<void> {
+  const currentNotices = [...memoryNotices];
+  memoryNotices = [];
+  notifyNotices();
+
+  if (isSupabaseConfigured) {
+    deleteAllSupabaseNotices().catch(() => {});
+  }
+
+  try {
+    const deletePromises = currentNotices.map(n => deleteDoc(doc(db, 'notices', n.id)));
+    await Promise.all(deletePromises);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, 'notices');
   }
 }
 

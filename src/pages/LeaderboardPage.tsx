@@ -82,6 +82,9 @@ export const LeaderboardPage: React.FC = () => {
                 'from-amber-700 to-amber-900 text-amber-100 border-amber-600'
               ];
               const titles = ['🥇 Top Rank #1', '🥈 Rank #2', '🥉 Rank #3'];
+              const displayTime = (item.timeTakenFormatted && item.timeTakenFormatted !== '0m 0s' && item.timeTakenFormatted !== '0m')
+                ? item.timeTakenFormatted
+                : (item.timeTakenSeconds ? `${Math.floor(item.timeTakenSeconds / 60)}m ${item.timeTakenSeconds % 60}s` : '—');
 
               return (
                 <div
@@ -120,7 +123,7 @@ export const LeaderboardPage: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block uppercase">Speed</span>
                       <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center justify-center gap-0.5 mt-0.5">
-                        <Zap className="w-3 h-3 fill-amber-500" /> {item.timeTakenFormatted || '—'}
+                        <Zap className="w-3 h-3 fill-amber-500" /> {displayTime}
                       </span>
                     </div>
                   </div>
@@ -173,6 +176,9 @@ export const LeaderboardPage: React.FC = () => {
                   'bg-slate-300 text-slate-950 border-slate-200 font-black',
                   'bg-amber-700 text-white border-amber-600 font-black',
                 ];
+                const displayTimeRow = (item.timeTakenFormatted && item.timeTakenFormatted !== '0m 0s' && item.timeTakenFormatted !== '0m')
+                  ? item.timeTakenFormatted
+                  : (item.timeTakenSeconds ? `${Math.floor(item.timeTakenSeconds / 60)}m ${item.timeTakenSeconds % 60}s` : '—');
 
                 return (
                   <div
@@ -207,16 +213,23 @@ export const LeaderboardPage: React.FC = () => {
                     <div className="col-span-2 text-left sm:text-center">
                       <span className="sm:hidden text-xs text-slate-400 font-medium mr-2">Time:</span>
                       <span className="text-xs font-bold text-amber-700 dark:text-amber-400 inline-flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" /> {item.timeTakenFormatted || '—'}
+                        <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" /> {displayTimeRow}
                       </span>
                     </div>
 
-                    {/* Accuracy */}
+                    {/* Accuracy & Questions */}
                     <div className="col-span-2 text-left sm:text-center">
                       <span className="sm:hidden text-xs text-slate-400 font-medium mr-2">Accuracy:</span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                        <Target className="w-3.5 h-3.5" /> {item.percentage}%
-                      </span>
+                      <div className="inline-flex flex-col items-start sm:items-center">
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                          <Target className="w-3.5 h-3.5" /> {item.percentage}% Accuracy
+                        </span>
+                        {item.correctCount !== undefined && (
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                            {item.correctCount} Correct {item.wrongCount !== undefined ? `/ ${item.wrongCount} Wrong` : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Score */}

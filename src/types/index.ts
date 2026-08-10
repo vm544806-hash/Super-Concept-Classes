@@ -112,6 +112,8 @@ export interface LeaderboardEntry {
   percentage: number;
   timeTakenFormatted: string;
   timeTakenSeconds?: number;
+  correctCount?: number;
+  wrongCount?: number;
   date: string;
   rank?: number;
 }

@@ -6,6 +6,7 @@ import {
   FileText, 
   HelpCircle, 
   Award, 
+  Bell,
   Settings, 
   LogOut, 
   GraduationCap,
@@ -30,6 +31,7 @@ export const AdminSidebar: React.FC = () => {
     { label: 'Tests Management', path: '/admin/tests', icon: FileText },
     { label: 'Questions Pool', path: '/admin/questions', icon: HelpCircle },
     { label: 'Student Results', path: '/admin/results', icon: Award },
+    { label: 'Notice Board', path: '/admin/notices', icon: Bell },
     { label: 'Portal Settings', path: '/admin/settings', icon: Settings },
   ];
 

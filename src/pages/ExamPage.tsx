@@ -59,6 +59,7 @@ export const ExamPage: React.FC = () => {
         }
         setTest(testData);
         setTimeRemainingSeconds(testData.durationMins * 60);
+        setStartTime(Date.now());
 
         const qList = await getQuestionsByTestId(id);
         setQuestions(qList);
@@ -219,7 +220,11 @@ export const ExamPage: React.FC = () => {
     if (!test || isSubmitting) return;
     setIsSubmitting(true);
 
-    const timeTakenSeconds = Math.round((Date.now() - startTime) / 1000);
+    const totalDurationSecs = (test.durationMins || 15) * 60;
+    const elapsedFromTimer = Math.max(1, totalDurationSecs - timeRemainingSeconds);
+    const elapsedFromClock = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+    const timeTakenSeconds = elapsedFromTimer > 0 ? elapsedFromTimer : elapsedFromClock;
+
     const stats = calculateScoreAndStats(test, questions, userResponses);
 
     const resultObj: ExamResult = {
