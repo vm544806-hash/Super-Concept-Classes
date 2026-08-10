@@ -31,7 +31,7 @@ export const ExamPage: React.FC = () => {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [userResponses, setUserResponses] = useState<Record<string, UserResponse>>({});
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(900); // 15 mins default
-  const [startTime] = useState<number>(Date.now());
+  const [startTime, setStartTime] = useState<number>(Date.now());
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isAutoSubmit, setIsAutoSubmit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
