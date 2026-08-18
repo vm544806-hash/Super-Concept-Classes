@@ -126,31 +126,205 @@ export const VideoSliderAdManager: React.FC = () => {
   return null;
 };
 
-export const Viralnex300x250Ad: React.FC = () => {
+// ---------------------------------------------------------
+// TOP ADS: VIRALNEX AD NETWORK (2 ADS - 300x250)
+// ---------------------------------------------------------
+
+export const ViralnexTopAd1: React.FC = () => {
   const { settings } = useSettings();
   const location = useLocation();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!settings.adsEnabled || location.pathname !== '/') return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
 
-    const container = document.getElementById('viralnex-300x250-ad-box-1');
-    if (!container) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
 
-    container.innerHTML = '';
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 300px;
+      height: 250px;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://viralnex.com/serve_ad.php?id=317aed465e492c14"></script>
+  <noscript><a href="https://viralnex.com/serve_nojs.php?id=317aed465e492c14" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=317aed465e492c14" alt="ad"/></a></noscript>
+</body>
+</html>`);
+      doc.close();
+    } catch (e) {
+      console.warn('Viralnex Ad 1 render notice:', e);
+    }
+  }, [settings.adsEnabled, location.pathname]);
 
-    const script = document.createElement('script');
-    script.src = 'https://viralnex.com/serve_ad.php?id=23d9640a91284aff';
-    script.async = true;
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
 
-    const noscript = document.createElement('noscript');
-    noscript.innerHTML = `<a href="https://viralnex.com/serve_nojs.php?id=23d9640a91284aff" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=23d9640a91284aff" alt="ad"/></a>`;
+  return (
+    <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] text-emerald-950 dark:text-emerald-300 font-black tracking-wider uppercase bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+          FEATURED SPONSOR #1 / विज्ञापन (TOP)
+        </span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
+      </div>
+      <div 
+        className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
+      >
+        <iframe
+          ref={iframeRef}
+          title="Viralnex Top Ad 1"
+          width="300"
+          height="250"
+          scrolling="no"
+          frameBorder="0"
+          className="w-[300px] h-[250px] border-0 overflow-hidden"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        />
+      </div>
+    </div>
+  );
+};
 
-    container.appendChild(script);
-    container.appendChild(noscript);
+export const ViralnexTopAd2: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
-    return () => {
-      if (container) container.innerHTML = '';
+  useEffect(() => {
+    if (!settings.adsEnabled || location.pathname !== '/') return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 300px;
+      height: 250px;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://viralnex.com/serve_ad.php?id=317aed465e492c14"></script>
+  <noscript><a href="https://viralnex.com/serve_nojs.php?id=317aed465e492c14" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=317aed465e492c14" alt="ad"/></a></noscript>
+</body>
+</html>`);
+      doc.close();
+    } catch (e) {
+      console.warn('Viralnex Ad 2 render notice:', e);
+    }
+  }, [settings.adsEnabled, location.pathname]);
+
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
+
+  return (
+    <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-teal-500/40 dark:border-teal-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] text-teal-950 dark:text-teal-300 font-black tracking-wider uppercase bg-teal-500/20 px-2 py-0.5 rounded border border-teal-500/30">
+          FEATURED SPONSOR #2 / विज्ञापन (TOP)
+        </span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
+      </div>
+      <div 
+        className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
+      >
+        <iframe
+          ref={iframeRef}
+          title="Viralnex Top Ad 2"
+          width="300"
+          height="250"
+          scrolling="no"
+          frameBorder="0"
+          className="w-[300px] h-[250px] border-0 overflow-hidden"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        />
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------
+// BOTTOM ADS: HIGH PERFORMANCE FORMAT AD NETWORK (2 ADS - 300x250)
+// ---------------------------------------------------------
+
+export const HighPerfBottomAd1: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (!settings.adsEnabled || location.pathname !== '/') return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 300px;
+      height: 250px;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <script type="text/javascript">
+    atOptions = {
+      'key' : '1d9e58131cab71fb1fb3ffa53eec18e2',
+      'format' : 'iframe',
+      'height' : 250,
+      'width' : 300,
+      'params' : {}
     };
+  </script>
+  <script type="text/javascript" src="https://www.highperformanceformat.com/1d9e58131cab71fb1fb3ffa53eec18e2/invoke.js"></script>
+</body>
+</html>`);
+      doc.close();
+    } catch (e) {
+      console.warn('HighPerf Ad 1 render note:', e);
+    }
   }, [settings.adsEnabled, location.pathname]);
 
   if (!settings.adsEnabled || location.pathname !== '/') return null;
@@ -158,45 +332,78 @@ export const Viralnex300x250Ad: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-amber-500/40 dark:border-amber-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] text-slate-900 dark:text-amber-300 font-black tracking-wider uppercase bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-          SPONSORED AD #1 / विज्ञापन
+        <span className="text-[10px] text-amber-950 dark:text-amber-300 font-black tracking-wider uppercase bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+          PREMIUM SPONSOR #1 / विज्ञापन (BOTTOM)
         </span>
         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
       </div>
       <div 
-        id="viralnex-300x250-ad-box-1"
         className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
       >
+        <iframe
+          ref={iframeRef}
+          title="HighPerf Bottom Ad 1"
+          width="300"
+          height="250"
+          scrolling="no"
+          frameBorder="0"
+          className="w-[300px] h-[250px] border-0 overflow-hidden"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        />
       </div>
     </div>
   );
 };
 
-export const Viralnex300x250Ad2: React.FC = () => {
+export const HighPerfBottomAd2: React.FC = () => {
   const { settings } = useSettings();
   const location = useLocation();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!settings.adsEnabled || location.pathname !== '/') return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
 
-    const container = document.getElementById('viralnex-300x250-ad-box-2');
-    if (!container) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
 
-    container.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://viralnex.com/serve_ad.php?id=317aed465e492c14';
-    script.async = true;
-
-    const noscript = document.createElement('noscript');
-    noscript.innerHTML = `<a href="https://viralnex.com/serve_nojs.php?id=317aed465e492c14" target="_blank" rel="noopener noreferrer"><img src="https://viralnex.com/serve_nojs_img.php?id=317aed465e492c14" alt="ad"/></a>`;
-
-    container.appendChild(script);
-    container.appendChild(noscript);
-
-    return () => {
-      if (container) container.innerHTML = '';
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 300px;
+      height: 250px;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <script type="text/javascript">
+    atOptions = {
+      'key' : '1d9e58131cab71fb1fb3ffa53eec18e2',
+      'format' : 'iframe',
+      'height' : 250,
+      'width' : 300,
+      'params' : {}
     };
+  </script>
+  <script type="text/javascript" src="https://www.highperformanceformat.com/1d9e58131cab71fb1fb3ffa53eec18e2/invoke.js"></script>
+</body>
+</html>`);
+      doc.close();
+    } catch (e) {
+      console.warn('HighPerf Ad 2 render note:', e);
+    }
   }, [settings.adsEnabled, location.pathname]);
 
   if (!settings.adsEnabled || location.pathname !== '/') return null;
@@ -205,18 +412,33 @@ export const Viralnex300x250Ad2: React.FC = () => {
     <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-indigo-500/40 dark:border-indigo-500/30 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all overflow-hidden max-w-full">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] text-indigo-900 dark:text-indigo-300 font-black tracking-wider uppercase bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">
-          SPONSORED AD #2 / विज्ञापन
+          PREMIUM SPONSOR #2 / विज्ञापन (BOTTOM)
         </span>
         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">(300x250)</span>
       </div>
       <div 
-        id="viralnex-300x250-ad-box-2"
         className="w-[300px] h-[250px] min-w-[300px] min-h-[250px] max-w-full overflow-hidden flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 relative"
       >
+        <iframe
+          ref={iframeRef}
+          title="HighPerf Bottom Ad 2"
+          width="300"
+          height="250"
+          scrolling="no"
+          frameBorder="0"
+          className="w-[300px] h-[250px] border-0 overflow-hidden"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        />
       </div>
     </div>
   );
 };
+
+// Aliases for backward compatibility
+export const Banner300x250Ad1 = HighPerfBottomAd1;
+export const Banner300x250Ad2 = HighPerfBottomAd2;
+export const Viralnex300x250Ad = ViralnexTopAd1;
+export const Viralnex300x250Ad2 = ViralnexTopAd2;
 
 export const ViralnexPopAdManager: React.FC = () => {
   const { settings } = useSettings();
@@ -247,7 +469,30 @@ export const ViralnexPopAdManager: React.FC = () => {
   return null;
 };
 
-export const HomeBannerAd: React.FC = () => {
+// TOP ADS CONTAINER (2 ADS - Viralnex Network)
+export const TopHomeBannerAds: React.FC = () => {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  if (!settings.adsEnabled || location.pathname !== '/') return null;
+
+  return (
+    <div id="home-top-advertisements" className="w-full my-6 px-4 flex flex-col items-center">
+      <div className="text-center mb-3">
+        <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/80 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-3.5 py-1 rounded-full">
+          Featured Sponsor Advertisements (Top)
+        </span>
+      </div>
+      <div className="flex flex-col lg:flex-row items-center justify-center gap-6 w-full max-w-4xl">
+        <ViralnexTopAd1 />
+        <ViralnexTopAd2 />
+      </div>
+    </div>
+  );
+};
+
+// BOTTOM ADS CONTAINER (2 ADS - HighPerformanceFormat Network)
+export const BottomHomeBannerAds: React.FC = () => {
   const { settings } = useSettings();
   const location = useLocation();
 
@@ -257,16 +502,21 @@ export const HomeBannerAd: React.FC = () => {
     <div id="home-bottom-advertisements" className="w-full my-8 px-4 flex flex-col items-center">
       <ViralnexPopAdManager />
       <div className="text-center mb-4">
-        <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full">
-          Official Sponsor Advertisements
+        <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/80 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-3.5 py-1 rounded-full">
+          Official Sponsor Advertisements (Bottom)
         </span>
       </div>
       <div className="flex flex-col lg:flex-row items-center justify-center gap-6 w-full max-w-4xl">
-        <Viralnex300x250Ad />
-        <Viralnex300x250Ad2 />
+        <HighPerfBottomAd1 />
+        <HighPerfBottomAd2 />
       </div>
     </div>
   );
+};
+
+// Default HomeBannerAd renders bottom ads
+export const HomeBannerAd: React.FC = () => {
+  return <BottomHomeBannerAds />;
 };
 
 export const HomeInlineAd: React.FC = () => {

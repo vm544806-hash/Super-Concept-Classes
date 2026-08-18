@@ -7,7 +7,7 @@ import { CategoryPills } from '../components/home/CategoryPills';
 import { TestCard } from '../components/home/TestCard';
 import { NoticeTeaser } from '../components/home/NoticeTeaser';
 import { LeaderboardTeaser } from '../components/home/LeaderboardTeaser';
-import { HomeBannerAd, HomeInlineAd } from '../components/common/AdComponents';
+import { TopHomeBannerAds, BottomHomeBannerAds, HomeInlineAd } from '../components/common/AdComponents';
 import { Flame, Star, Sparkles, BookOpen, Clock, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
 import { computeTestStatus } from '../utils/testHelpers';
 
@@ -69,8 +69,8 @@ export const HomePage: React.FC = () => {
         {/* Hero Section */}
         <HeroBanner />
 
-        {/* 300x250 Viralnex Advertisement Container Box */}
-        <HomeBannerAd />
+        {/* Top 300x250 Viralnex Advertisement Banners (2 Ads) */}
+        <TopHomeBannerAds />
 
         {/* Search & Filters */}
         <div className="my-6 space-y-4">
@@ -267,8 +267,8 @@ export const HomePage: React.FC = () => {
           <LeaderboardTeaser entries={leaderboard} />
         </div>
 
-        {/* 300x250 Banner Ads (Border Boxed) & Pop Ad */}
-        <HomeBannerAd />
+        {/* Bottom 300x250 HighPerformanceFormat Banner Ads (2 Ads) & Pop Ad */}
+        <BottomHomeBannerAds />
 
       </div>
     </div>
