@@ -485,171 +485,185 @@ export async function checkSupabaseHealth(): Promise<{ ok: boolean; message: str
 
 export async function fetchSupabaseTests(): Promise<Test[] | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('tests').select('*');
-
-  if (error) {
-    console.error('Supabase fetch tests error:', error);
+  try {
+    const { data, error } = await supabase.from('tests').select('*');
+    if (error) {
+      console.warn('Supabase fetch tests notice (using Firestore):', error.message || error);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.title || '',
+      description: row.description || '',
+      category: row.category || row.subject || 'Class 10th',
+      imageUrl: row.imageUrl || row.image_url || row.imageurl || '',
+      durationMins: Number(row.durationMins || row.duration_mins || row.durationmins || row.durationMinutes) || 30,
+      totalQuestions: Number(row.totalQuestions || row.total_questions || row.totalquestions) || 0,
+      totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
+      negativeMarking: Number(row.negativeMarking || row.negative_marking || row.negativemarking) || 0,
+      passingMarks: Number(row.passingMarks || row.passing_marks || row.passingmarks || row.passingPercentage) || 40,
+      instructions: typeof row.instructions === 'string' ? JSON.parse(row.instructions) : (row.instructions || []),
+      isPublished: row.isPublished !== undefined ? Boolean(row.isPublished) : (row.is_published !== undefined ? Boolean(row.is_published) : (row.ispublished !== undefined ? Boolean(row.ispublished) : true)),
+      isPopular: Boolean(row.isPopular || row.is_popular || row.ispopular),
+      isFeatured: Boolean(row.isFeatured || row.is_featured || row.isfeatured),
+      allowRetake: row.allowRetake !== undefined ? Boolean(row.allowRetake) : (row.allow_retake !== undefined ? Boolean(row.allow_retake) : true),
+      startTime: row.startTime || row.start_time || row.starttime || '',
+      endTime: row.endTime || row.end_time || row.endtime || '',
+      autoSchedule: row.autoSchedule !== undefined ? Boolean(row.autoSchedule) : (row.auto_schedule !== undefined ? Boolean(row.auto_schedule) : false),
+      marksPerQuestion: Number(row.marksPerQuestion || row.marks_per_question || row.marksperquestion) || undefined,
+      testVersion: Number(row.testVersion || row.test_version || row.testversion) || 1,
+      attemptsCount: Number(row.attemptsCount || row.attempts_count || row.attemptscount) || 0,
+      createdAt: row.createdAt || row.created_at || row.createdat || new Date().toISOString(),
+      updatedAt: row.updatedAt || row.updated_at || row.updatedat || new Date().toISOString()
+    })) as Test[];
+  } catch (err: any) {
+    console.warn('Supabase fetch tests fallback note:', err?.message || err);
     return null;
   }
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title || '',
-    description: row.description || '',
-    category: row.category || row.subject || 'Class 10th',
-    imageUrl: row.imageUrl || row.image_url || row.imageurl || '',
-    durationMins: Number(row.durationMins || row.duration_mins || row.durationmins || row.durationMinutes) || 30,
-    totalQuestions: Number(row.totalQuestions || row.total_questions || row.totalquestions) || 0,
-    totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
-    negativeMarking: Number(row.negativeMarking || row.negative_marking || row.negativemarking) || 0,
-    passingMarks: Number(row.passingMarks || row.passing_marks || row.passingmarks || row.passingPercentage) || 40,
-    instructions: typeof row.instructions === 'string' ? JSON.parse(row.instructions) : (row.instructions || []),
-    isPublished: row.isPublished !== undefined ? Boolean(row.isPublished) : (row.is_published !== undefined ? Boolean(row.is_published) : (row.ispublished !== undefined ? Boolean(row.ispublished) : true)),
-    isPopular: Boolean(row.isPopular || row.is_popular || row.ispopular),
-    isFeatured: Boolean(row.isFeatured || row.is_featured || row.isfeatured),
-    allowRetake: row.allowRetake !== undefined ? Boolean(row.allowRetake) : (row.allow_retake !== undefined ? Boolean(row.allow_retake) : true),
-    startTime: row.startTime || row.start_time || row.starttime || '',
-    endTime: row.endTime || row.end_time || row.endtime || '',
-    autoSchedule: row.autoSchedule !== undefined ? Boolean(row.autoSchedule) : (row.auto_schedule !== undefined ? Boolean(row.auto_schedule) : false),
-    marksPerQuestion: Number(row.marksPerQuestion || row.marks_per_question || row.marksperquestion) || undefined,
-    testVersion: Number(row.testVersion || row.test_version || row.testversion) || 1,
-    attemptsCount: Number(row.attemptsCount || row.attempts_count || row.attemptscount) || 0,
-    createdAt: row.createdAt || row.created_at || row.createdat || new Date().toISOString(),
-    updatedAt: row.updatedAt || row.updated_at || row.updatedat || new Date().toISOString()
-  })) as Test[];
 }
 
 export async function saveSupabaseTest(t: Test): Promise<boolean> {
   if (!supabase) return false;
 
-  const now = new Date().toISOString();
-  const duration = Number(t.durationMins) || 30;
-  const tQuestions = Number(t.totalQuestions) || 0;
-  const tMarks = Number(t.totalMarks) || 100;
-  const negMarking = Number(t.negativeMarking) || 0;
-  const passMarks = Number(t.passingMarks) || 40;
-  const isPub = t.isPublished !== undefined ? Boolean(t.isPublished) : true;
-  const isPop = Boolean(t.isPopular);
-  const isFeat = Boolean(t.isFeatured);
-  const retake = t.allowRetake !== undefined ? Boolean(t.allowRetake) : true;
-  const ver = Number(t.testVersion) || 1;
-  const attempts = Number(t.attemptsCount) || 0;
-  const created = t.createdAt || now;
+  try {
+    const now = new Date().toISOString();
+    const duration = Number(t.durationMins) || 30;
+    const tQuestions = Number(t.totalQuestions) || 0;
+    const tMarks = Number(t.totalMarks) || 100;
+    const negMarking = Number(t.negativeMarking) || 0;
+    const passMarks = Number(t.passingMarks) || 40;
+    const isPub = t.isPublished !== undefined ? Boolean(t.isPublished) : true;
+    const isPop = Boolean(t.isPopular);
+    const isFeat = Boolean(t.isFeatured);
+    const retake = t.allowRetake !== undefined ? Boolean(t.allowRetake) : true;
+    const ver = Number(t.testVersion) || 1;
+    const attempts = Number(t.attemptsCount) || 0;
+    const created = t.createdAt || now;
 
-  // Primary payload with all schema alias columns populated
-  const payload: any = {
-    id: t.id,
-    title: t.title || 'Untitled Test',
-    description: t.description || '',
-    category: t.category || 'Class 10th',
-    instructions: t.instructions || [],
-    // CamelCase
-    imageUrl: t.imageUrl || '',
-    durationMins: duration,
-    totalQuestions: tQuestions,
-    totalMarks: tMarks,
-    negativeMarking: negMarking,
-    passingMarks: passMarks,
-    marksPerQuestion: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
-    startTime: t.startTime || '',
-    endTime: t.endTime || '',
-    autoSchedule: Boolean(t.autoSchedule),
-    isPublished: isPub,
-    isPopular: isPop,
-    isFeatured: isFeat,
-    allowRetake: retake,
-    testVersion: ver,
-    attemptsCount: attempts,
-    createdAt: created,
-    updatedAt: now,
-    // snake_case
-    image_url: t.imageUrl || '',
-    duration_mins: duration,
-    total_questions: tQuestions,
-    total_marks: tMarks,
-    negative_marking: negMarking,
-    passing_marks: passMarks,
-    marks_per_question: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
-    start_time: t.startTime || '',
-    end_time: t.endTime || '',
-    auto_schedule: Boolean(t.autoSchedule),
-    is_published: isPub,
-    is_popular: isPop,
-    is_featured: isFeat,
-    allow_retake: retake,
-    test_version: ver,
-    attempts_count: attempts,
-    created_at: created,
-    updated_at: now,
-    // unquoted lowercase
-    imageurl: t.imageUrl || '',
-    durationmins: duration,
-    totalquestions: tQuestions,
-    totalmarks: tMarks,
-    negativemarking: negMarking,
-    passingmarks: passMarks,
-    marksperquestion: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
-    starttime: t.startTime || '',
-    endtime: t.endTime || '',
-    autoschedule: Boolean(t.autoSchedule),
-    ispublished: isPub,
-    ispopular: isPop,
-    isfeatured: isFeat,
-    allowretake: retake,
-    testversion: ver,
-    attemptscount: attempts,
-    createdat: created,
-    updatedat: now
-  };
+    // Primary payload with all schema alias columns populated
+    const payload: any = {
+      id: t.id,
+      title: t.title || 'Untitled Test',
+      description: t.description || '',
+      category: t.category || 'Class 10th',
+      instructions: t.instructions || [],
+      // CamelCase
+      imageUrl: t.imageUrl || '',
+      durationMins: duration,
+      totalQuestions: tQuestions,
+      totalMarks: tMarks,
+      negativeMarking: negMarking,
+      passingMarks: passMarks,
+      marksPerQuestion: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
+      startTime: t.startTime || '',
+      endTime: t.endTime || '',
+      autoSchedule: Boolean(t.autoSchedule),
+      isPublished: isPub,
+      isPopular: isPop,
+      isFeatured: isFeat,
+      allowRetake: retake,
+      testVersion: ver,
+      attemptsCount: attempts,
+      createdAt: created,
+      updatedAt: now,
+      // snake_case
+      image_url: t.imageUrl || '',
+      duration_mins: duration,
+      total_questions: tQuestions,
+      total_marks: tMarks,
+      negative_marking: negMarking,
+      passing_marks: passMarks,
+      marks_per_question: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
+      start_time: t.startTime || '',
+      end_time: t.endTime || '',
+      auto_schedule: Boolean(t.autoSchedule),
+      is_published: isPub,
+      is_popular: isPop,
+      is_featured: isFeat,
+      allow_retake: retake,
+      test_version: ver,
+      attempts_count: attempts,
+      created_at: created,
+      updated_at: now,
+      // unquoted lowercase
+      imageurl: t.imageUrl || '',
+      durationmins: duration,
+      totalquestions: tQuestions,
+      totalmarks: tMarks,
+      negativemarking: negMarking,
+      passingmarks: passMarks,
+      marksperquestion: t.marksPerQuestion ? Number(t.marksPerQuestion) : undefined,
+      starttime: t.startTime || '',
+      endtime: t.endTime || '',
+      autoschedule: Boolean(t.autoSchedule),
+      ispublished: isPub,
+      ispopular: isPop,
+      isfeatured: isFeat,
+      allowretake: retake,
+      testversion: ver,
+      attemptscount: attempts,
+      createdat: created,
+      updatedat: now
+    };
 
-  const { error } = await supabase.from('tests').upsert(payload);
-  if (!error) return true;
+    const { error } = await supabase.from('tests').upsert(payload);
+    if (!error) return true;
 
-  // Retry 1: CamelCase payload
-  const camelPayload: any = {
-    id: t.id,
-    title: t.title || 'Untitled Test',
-    description: t.description || '',
-    category: t.category || 'Class 10th',
-    imageUrl: t.imageUrl || '',
-    durationMins: duration,
-    totalQuestions: tQuestions,
-    totalMarks: tMarks,
-    negativeMarking: negMarking,
-    passingMarks: passMarks,
-    instructions: t.instructions || [],
-    isPublished: isPub,
-    isPopular: isPop,
-    isFeatured: isFeat,
-    allowRetake: retake,
-    testVersion: ver,
-    attemptsCount: attempts,
-    createdAt: created,
-    updatedAt: now
-  };
-  const retryCamel = await supabase.from('tests').upsert(camelPayload);
-  if (!retryCamel.error) return true;
+    // Retry 1: CamelCase payload
+    const camelPayload: any = {
+      id: t.id,
+      title: t.title || 'Untitled Test',
+      description: t.description || '',
+      category: t.category || 'Class 10th',
+      imageUrl: t.imageUrl || '',
+      durationMins: duration,
+      totalQuestions: tQuestions,
+      totalMarks: tMarks,
+      negativeMarking: negMarking,
+      passingMarks: passMarks,
+      instructions: t.instructions || [],
+      isPublished: isPub,
+      isPopular: isPop,
+      isFeatured: isFeat,
+      allowRetake: retake,
+      testVersion: ver,
+      attemptsCount: attempts,
+      createdAt: created,
+      updatedAt: now
+    };
+    const retryCamel = await supabase.from('tests').upsert(camelPayload);
+    if (!retryCamel.error) return true;
 
-  // Retry 2: Core minimal payload
-  const corePayload = {
-    id: t.id,
-    title: t.title || 'Untitled Test',
-    description: t.description || '',
-    category: t.category || 'Class 10th'
-  };
-  const retryCore = await supabase.from('tests').upsert(corePayload);
-  return !retryCore.error;
+    // Retry 2: Core minimal payload
+    const corePayload = {
+      id: t.id,
+      title: t.title || 'Untitled Test',
+      description: t.description || '',
+      category: t.category || 'Class 10th'
+    };
+    const retryCore = await supabase.from('tests').upsert(corePayload);
+    return !retryCore.error;
+  } catch (err: any) {
+    console.warn('Supabase save test note (Firestore saved successfully):', err?.message || err);
+    return false;
+  }
 }
 
 export async function deleteSupabaseTest(testId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('tests').delete().eq('id', testId);
-  if (error) {
-    console.error('Supabase delete test error:', error);
+  try {
+    const { error } = await supabase.from('tests').delete().eq('id', testId);
+    if (error) {
+      console.warn('Supabase delete test notice:', error.message || error);
+      return false;
+    }
+    // Delete associated questions as well
+    await supabase.from('questions').delete().or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase delete test exception:', err?.message || err);
     return false;
   }
-  // Delete associated questions as well
-  await supabase.from('questions').delete().or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
-  return true;
 }
 
 // ---------------------------------------------------------
@@ -676,21 +690,26 @@ function parseQuestionRow(row: any): Question {
 
 export async function fetchSupabaseQuestions(testId?: string): Promise<Question[] | null> {
   if (!supabase) return null;
-  let queryBuilder = supabase.from('questions').select('*');
-  if (testId) {
-    queryBuilder = queryBuilder.or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
-  }
-  const { data, error } = await queryBuilder;
+  try {
+    let queryBuilder = supabase.from('questions').select('*');
+    if (testId) {
+      queryBuilder = queryBuilder.or(`testId.eq.${testId},test_id.eq.${testId},testid.eq.${testId}`);
+    }
+    const { data, error } = await queryBuilder;
 
-  if (error) {
-    // Fallback if .or query fails
-    const fallback = await supabase.from('questions').select('*');
-    if (fallback.error || !fallback.data) return null;
-    const all = fallback.data;
-    const filtered = testId ? all.filter((r: any) => (r.testId === testId || r.test_id === testId || r.testid === testId)) : all;
-    return filtered.map(parseQuestionRow);
+    if (error) {
+      // Fallback if .or query fails
+      const fallback = await supabase.from('questions').select('*');
+      if (fallback.error || !fallback.data) return null;
+      const all = fallback.data;
+      const filtered = testId ? all.filter((r: any) => (r.testId === testId || r.test_id === testId || r.testid === testId)) : all;
+      return filtered.map(parseQuestionRow);
+    }
+    return (data || []).map(parseQuestionRow) as Question[];
+  } catch (err: any) {
+    console.warn('Supabase fetch questions fallback note:', err?.message || err);
+    return null;
   }
-  return (data || []).map(parseQuestionRow) as Question[];
 }
 
 function parseOptIndex(ca: any): number {
@@ -710,100 +729,110 @@ function parseOptIndex(ca: any): number {
 export async function saveSupabaseQuestion(q: Question): Promise<boolean> {
   if (!supabase) return false;
 
-  const testIdVal = q.testId && q.testId.trim() !== '' ? q.testId : null;
-  const qText = q.question || '';
-  const optIdx = parseOptIndex(q.correctAnswer);
-  const corrAnsStr = Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A');
-  const now = new Date().toISOString();
+  try {
+    const testIdVal = q.testId && q.testId.trim() !== '' ? q.testId : null;
+    const qText = q.question || '';
+    const optIdx = parseOptIndex(q.correctAnswer);
+    const corrAnsStr = Array.isArray(q.correctAnswer) ? JSON.stringify(q.correctAnswer) : String(q.correctAnswer || 'A');
+    const now = new Date().toISOString();
 
-  // Multi-alias payload that covers camelCase, snake_case, and unquoted lowercase DB schemas
-  const payload: any = {
-    id: q.id,
-    // testId aliases
-    testId: testIdVal,
-    test_id: testIdVal,
-    testid: testIdVal,
-    // question text aliases
-    question: qText,
-    questionText: qText,
-    question_text: qText,
-    questiontext: qText,
-    // options
-    options: q.options || [],
-    // correctAnswer aliases
-    correctAnswer: corrAnsStr,
-    correct_answer: corrAnsStr,
-    correctanswer: corrAnsStr,
-    // correctOptionIndex aliases
-    correctOptionIndex: optIdx,
-    correct_option_index: optIdx,
-    correctoptionindex: optIdx,
-    // metadata
-    explanation: q.explanation || '',
-    subject: q.subject || 'General Knowledge',
-    topic: q.topic || '',
-    difficulty: q.difficulty || 'Medium',
-    type: q.type || 'single',
-    marks: q.marks !== undefined ? Number(q.marks) : 2,
-    // imageUrl aliases
-    imageUrl: q.imageUrl || '',
-    image_url: q.imageUrl || '',
-    imageurl: q.imageUrl || '',
-    // paragraphText aliases
-    paragraphText: q.paragraphText || '',
-    paragraph_text: q.paragraphText || '',
-    paragraphtext: q.paragraphText || '',
-    // createdAt aliases
-    createdAt: now,
-    created_at: now,
-    createdat: now
-  };
+    // Multi-alias payload that covers camelCase, snake_case, and unquoted lowercase DB schemas
+    const payload: any = {
+      id: q.id,
+      // testId aliases
+      testId: testIdVal,
+      test_id: testIdVal,
+      testid: testIdVal,
+      // question text aliases
+      question: qText,
+      questionText: qText,
+      question_text: qText,
+      questiontext: qText,
+      // options
+      options: q.options || [],
+      // correctAnswer aliases
+      correctAnswer: corrAnsStr,
+      correct_answer: corrAnsStr,
+      correctanswer: corrAnsStr,
+      // correctOptionIndex aliases
+      correctOptionIndex: optIdx,
+      correct_option_index: optIdx,
+      correctoptionindex: optIdx,
+      // metadata
+      explanation: q.explanation || '',
+      subject: q.subject || 'General Knowledge',
+      topic: q.topic || '',
+      difficulty: q.difficulty || 'Medium',
+      type: q.type || 'single',
+      marks: q.marks !== undefined ? Number(q.marks) : 2,
+      // imageUrl aliases
+      imageUrl: q.imageUrl || '',
+      image_url: q.imageUrl || '',
+      imageurl: q.imageUrl || '',
+      // paragraphText aliases
+      paragraphText: q.paragraphText || '',
+      paragraph_text: q.paragraphText || '',
+      paragraphtext: q.paragraphText || '',
+      // createdAt aliases
+      createdAt: now,
+      created_at: now,
+      createdat: now
+    };
 
-  const { error } = await supabase.from('questions').upsert(payload);
+    const { error } = await supabase.from('questions').upsert(payload);
 
-  if (!error) return true;
+    if (!error) return true;
 
-  // Retry 1: CamelCase payload
-  const camelPayload: any = {
-    id: q.id,
-    testId: testIdVal,
-    question: qText,
-    questionText: qText,
-    options: q.options || [],
-    correctAnswer: corrAnsStr,
-    correctOptionIndex: optIdx,
-    explanation: q.explanation || '',
-    subject: q.subject || 'General Knowledge'
-  };
+    // Retry 1: CamelCase payload
+    const camelPayload: any = {
+      id: q.id,
+      testId: testIdVal,
+      question: qText,
+      questionText: qText,
+      options: q.options || [],
+      correctAnswer: corrAnsStr,
+      correctOptionIndex: optIdx,
+      explanation: q.explanation || '',
+      subject: q.subject || 'General Knowledge'
+    };
 
-  const retryCamel = await supabase.from('questions').upsert(camelPayload);
-  if (!retryCamel.error) return true;
+    const retryCamel = await supabase.from('questions').upsert(camelPayload);
+    if (!retryCamel.error) return true;
 
-  // Retry 2: Minimal fallback payload
-  const corePayload: any = {
-    id: q.id,
-    question: qText,
-    options: q.options || []
-  };
-  if (testIdVal) corePayload.testId = testIdVal;
+    // Retry 2: Minimal fallback payload
+    const corePayload: any = {
+      id: q.id,
+      question: qText,
+      options: q.options || []
+    };
+    if (testIdVal) corePayload.testId = testIdVal;
 
-  const retryCore = await supabase.from('questions').upsert(corePayload);
-  if (!retryCore.error) return true;
+    const retryCore = await supabase.from('questions').upsert(corePayload);
+    if (!retryCore.error) return true;
 
-  // Retry 3: Core without testId
-  delete corePayload.testId;
-  const retryNoFk = await supabase.from('questions').upsert(corePayload);
-  return !retryNoFk.error;
+    // Retry 3: Core without testId
+    delete corePayload.testId;
+    const retryNoFk = await supabase.from('questions').upsert(corePayload);
+    return !retryNoFk.error;
+  } catch (err: any) {
+    console.warn('Supabase save question fallback note:', err?.message || err);
+    return false;
+  }
 }
 
 export async function deleteSupabaseQuestion(qId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('questions').delete().eq('id', qId);
-  if (error) {
-    console.error('Supabase delete question error:', error);
+  try {
+    const { error } = await supabase.from('questions').delete().eq('id', qId);
+    if (error) {
+      console.warn('Supabase delete question notice:', error.message || error);
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase delete question exception:', err?.message || err);
     return false;
   }
-  return true;
 }
 
 // ---------------------------------------------------------
@@ -812,69 +841,89 @@ export async function deleteSupabaseQuestion(qId: string): Promise<boolean> {
 
 export async function fetchSupabaseNotices(): Promise<Notice[] | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('notices').select('*');
-  if (error) {
-    console.error('Supabase fetch notices error:', error);
+  try {
+    const { data, error } = await supabase.from('notices').select('*');
+    if (error) {
+      console.warn('Supabase fetch notices notice (using Firestore):', error.message || error);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.title || '',
+      content: row.content || '',
+      category: row.category || 'General',
+      date: row.date || new Date().toISOString().split('T')[0],
+      isImportant: Boolean(row.important || row.isImportant),
+      linkUrl: row.linkUrl || ''
+    })) as Notice[];
+  } catch (err: any) {
+    console.warn('Supabase fetch notices fallback note:', err?.message || err);
     return null;
   }
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title || '',
-    content: row.content || '',
-    category: row.category || 'General',
-    date: row.date || new Date().toISOString().split('T')[0],
-    isImportant: Boolean(row.important || row.isImportant),
-    linkUrl: row.linkUrl || ''
-  })) as Notice[];
 }
 
 export async function saveSupabaseNotice(n: Notice): Promise<boolean> {
   if (!supabase) return false;
-  const payload: any = {
-    id: n.id,
-    title: n.title,
-    content: n.content,
-    category: n.category || 'General',
-    date: n.date || new Date().toISOString().split('T')[0],
-    important: Boolean(n.isImportant),
-    linkUrl: n.linkUrl || ''
-  };
-  const { error } = await supabase.from('notices').upsert(payload);
-  if (error) {
-    console.warn('Supabase save notice error, trying minimalist payload:', error);
-    const corePayload = {
+  try {
+    const payload: any = {
       id: n.id,
       title: n.title,
       content: n.content,
-      date: n.date || new Date().toISOString().split('T')[0]
+      category: n.category || 'General',
+      date: n.date || new Date().toISOString().split('T')[0],
+      important: Boolean(n.isImportant),
+      linkUrl: n.linkUrl || ''
     };
-    const retry = await supabase.from('notices').upsert(corePayload);
-    if (retry.error) {
-      console.error('Supabase save notice error:', retry.error);
-      return false;
+    const { error } = await supabase.from('notices').upsert(payload);
+    if (error) {
+      console.warn('Supabase save notice fallback minimal payload:', error.message || error);
+      const corePayload = {
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        date: n.date || new Date().toISOString().split('T')[0]
+      };
+      const retry = await supabase.from('notices').upsert(corePayload);
+      if (retry.error) {
+        console.warn('Supabase save notice retry note:', retry.error.message || retry.error);
+        return false;
+      }
     }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase save notice exception note:', err?.message || err);
+    return false;
   }
-  return true;
 }
 
 export async function deleteSupabaseNotice(noticeId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('notices').delete().eq('id', noticeId);
-  if (error) {
-    console.error('Supabase delete notice error:', error);
+  try {
+    const { error } = await supabase.from('notices').delete().eq('id', noticeId);
+    if (error) {
+      console.warn('Supabase delete notice notice:', error.message || error);
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase delete notice exception note:', err?.message || err);
     return false;
   }
-  return true;
 }
 
 export async function deleteAllSupabaseNotices(): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('notices').delete().neq('id', '___non_existent_id___');
-  if (error) {
-    console.error('Supabase delete all notices error:', error);
+  try {
+    const { error } = await supabase.from('notices').delete().neq('id', '___non_existent_id___');
+    if (error) {
+      console.warn('Supabase delete all notices notice:', error.message || error);
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase delete all notices exception note:', err?.message || err);
     return false;
   }
-  return true;
 }
 
 // ---------------------------------------------------------
@@ -894,16 +943,21 @@ export async function fetchSupabaseSettings(): Promise<SiteSettings | null> {
 
 export async function saveSupabaseSettings(settings: SiteSettings): Promise<boolean> {
   if (!supabase) return false;
-  const payload = {
-    id: 'general',
-    data: settings
-  };
-  const { error } = await supabase.from('settings').upsert(payload);
-  if (error) {
-    console.error('Supabase save settings error:', error);
+  try {
+    const payload = {
+      id: 'general',
+      data: settings
+    };
+    const { error } = await supabase.from('settings').upsert(payload);
+    if (error) {
+      console.warn('Supabase save settings note:', error.message || error);
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase save settings exception note:', err?.message || err);
     return false;
   }
-  return true;
 }
 
 // ---------------------------------------------------------
@@ -912,108 +966,117 @@ export async function saveSupabaseSettings(settings: SiteSettings): Promise<bool
 
 export async function fetchSupabaseResults(): Promise<ExamResult[] | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('results').select('*');
-  if (error) {
-    console.error('Supabase fetch results error:', error);
+  try {
+    const { data, error } = await supabase.from('results').select('*');
+    if (error) {
+      console.warn('Supabase fetch results note (using Firestore):', error.message || error);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      testId: row.testId || row.test_id || row.testid || '',
+      testTitle: row.testTitle || row.test_title || row.testtitle || '',
+      category: row.category || 'Class 10th',
+      studentName: row.studentName || row.student_name || row.userName || row.user_name || row.userId || row.studentname || 'Candidate',
+      studentEmail: row.studentEmail || row.student_email || row.userEmail || row.user_email || '',
+      studentMobile: row.studentMobile || row.student_mobile || row.userMobile || row.user_mobile || '',
+      score: Number(row.score) || 0,
+      totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
+      percentage: Number(row.percentage) || 0,
+      correctCount: Number(row.correctAnswers || row.correct_answers || row.correctCount) || 0,
+      wrongCount: Number(row.wrongAnswers || row.wrong_answers || row.wrongCount) || 0,
+      skippedCount: Number(row.unanswered || row.skippedCount || row.skipped_count) || 0,
+      totalQuestions: Number(row.totalQuestions || row.total_questions) || 0,
+      timeTakenSeconds: Number(row.timeTakenSeconds || row.time_taken_seconds || row.timetakenseconds) || 0,
+      submittedAt: row.submittedAt || row.submitted_at || row.submittedat || new Date().toISOString(),
+      testVersion: Number(row.testVersion || row.test_version) || 1,
+      responses: typeof row.userAnswers === 'string' ? JSON.parse(row.userAnswers) : (row.userAnswers || row.user_answers || row.responses || {})
+    })) as ExamResult[];
+  } catch (err: any) {
+    console.warn('Supabase fetch results fallback note (Firestore active):', err?.message || err);
     return null;
   }
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    testId: row.testId || row.test_id || row.testid || '',
-    testTitle: row.testTitle || row.test_title || row.testtitle || '',
-    category: row.category || 'Class 10th',
-    studentName: row.studentName || row.student_name || row.userName || row.user_name || row.userId || row.studentname || 'Candidate',
-    studentEmail: row.studentEmail || row.student_email || row.userEmail || row.user_email || '',
-    studentMobile: row.studentMobile || row.student_mobile || row.userMobile || row.user_mobile || '',
-    score: Number(row.score) || 0,
-    totalMarks: Number(row.totalMarks || row.total_marks || row.totalmarks) || 100,
-    percentage: Number(row.percentage) || 0,
-    correctCount: Number(row.correctAnswers || row.correct_answers || row.correctCount) || 0,
-    wrongCount: Number(row.wrongAnswers || row.wrong_answers || row.wrongCount) || 0,
-    skippedCount: Number(row.unanswered || row.skippedCount || row.skipped_count) || 0,
-    totalQuestions: Number(row.totalQuestions || row.total_questions) || 0,
-    timeTakenSeconds: Number(row.timeTakenSeconds || row.time_taken_seconds || row.timetakenseconds) || 0,
-    submittedAt: row.submittedAt || row.submitted_at || row.submittedat || new Date().toISOString(),
-    testVersion: Number(row.testVersion || row.test_version) || 1,
-    responses: typeof row.userAnswers === 'string' ? JSON.parse(row.userAnswers) : (row.userAnswers || row.user_answers || row.responses || {})
-  })) as ExamResult[];
 }
 
 export async function saveSupabaseResult(r: ExamResult): Promise<boolean> {
   if (!supabase) return false;
-  const testIdVal = r.testId && r.testId.trim() !== '' ? r.testId : null;
-  const timeSecs = Number(r.timeTakenSeconds) || 0;
-  
-  const payload: any = {
-    id: r.id,
-    userId: r.studentName || 'Candidate',
-    userName: r.studentName || 'Candidate',
-    user_name: r.studentName || 'Candidate',
-    userEmail: r.studentEmail || '',
-    user_email: r.studentEmail || '',
-    studentName: r.studentName || 'Candidate',
-    student_name: r.studentName || 'Candidate',
-    studentEmail: r.studentEmail || '',
-    student_email: r.studentEmail || '',
-    studentMobile: r.studentMobile || '',
-    student_mobile: r.studentMobile || '',
-    testId: testIdVal,
-    test_id: testIdVal,
-    testTitle: r.testTitle || '',
-    test_title: r.testTitle || '',
-    category: r.category || 'Class 10th',
-    score: r.score || 0,
-    totalMarks: r.totalMarks || 100,
-    total_marks: r.totalMarks || 100,
-    percentage: r.percentage || 0,
-    passed: (r.percentage || 0) >= 40,
-    totalQuestions: r.totalQuestions || 0,
-    total_questions: r.totalQuestions || 0,
-    correctAnswers: r.correctCount || 0,
-    correct_answers: r.correctCount || 0,
-    wrongAnswers: r.wrongCount || 0,
-    wrong_answers: r.wrongCount || 0,
-    unanswered: r.skippedCount || 0,
-    timeTakenSeconds: timeSecs,
-    time_taken_seconds: timeSecs,
-    submittedAt: r.submittedAt || new Date().toISOString(),
-    submitted_at: r.submittedAt || new Date().toISOString(),
-    testVersion: r.testVersion || 1,
-    test_version: r.testVersion || 1,
-    userAnswers: r.responses || {},
-    user_answers: r.responses || {}
-  };
+  try {
+    const testIdVal = r.testId && r.testId.trim() !== '' ? r.testId : null;
+    const timeSecs = Number(r.timeTakenSeconds) || 0;
+    
+    const payload: any = {
+      id: r.id,
+      userId: r.studentName || 'Candidate',
+      userName: r.studentName || 'Candidate',
+      user_name: r.studentName || 'Candidate',
+      userEmail: r.studentEmail || '',
+      user_email: r.studentEmail || '',
+      studentName: r.studentName || 'Candidate',
+      student_name: r.studentName || 'Candidate',
+      studentEmail: r.studentEmail || '',
+      student_email: r.studentEmail || '',
+      studentMobile: r.studentMobile || '',
+      student_mobile: r.studentMobile || '',
+      testId: testIdVal,
+      test_id: testIdVal,
+      testTitle: r.testTitle || '',
+      test_title: r.testTitle || '',
+      category: r.category || 'Class 10th',
+      score: r.score || 0,
+      totalMarks: r.totalMarks || 100,
+      total_marks: r.totalMarks || 100,
+      percentage: r.percentage || 0,
+      passed: (r.percentage || 0) >= 40,
+      totalQuestions: r.totalQuestions || 0,
+      total_questions: r.totalQuestions || 0,
+      correctAnswers: r.correctCount || 0,
+      correct_answers: r.correctCount || 0,
+      wrongAnswers: r.wrongCount || 0,
+      wrong_answers: r.wrongCount || 0,
+      unanswered: r.skippedCount || 0,
+      timeTakenSeconds: timeSecs,
+      time_taken_seconds: timeSecs,
+      submittedAt: r.submittedAt || new Date().toISOString(),
+      submitted_at: r.submittedAt || new Date().toISOString(),
+      testVersion: r.testVersion || 1,
+      test_version: r.testVersion || 1,
+      userAnswers: r.responses || {},
+      user_answers: r.responses || {}
+    };
 
-  const { error } = await supabase.from('results').upsert(payload);
-  if (!error) return true;
+    const { error } = await supabase.from('results').upsert(payload);
+    if (!error) return true;
 
-  console.warn('Supabase saveResult full payload error, attempting fallback:', error);
-  const corePayload: any = {
-    id: r.id,
-    studentName: r.studentName || 'Candidate',
-    student_name: r.studentName || 'Candidate',
-    testId: testIdVal,
-    test_id: testIdVal,
-    testTitle: r.testTitle || '',
-    test_title: r.testTitle || '',
-    score: r.score || 0,
-    totalMarks: r.totalMarks || 100,
-    total_marks: r.totalMarks || 100,
-    percentage: r.percentage || 0,
-    timeTakenSeconds: timeSecs,
-    time_taken_seconds: timeSecs,
-    submittedAt: r.submittedAt || new Date().toISOString(),
-    submitted_at: r.submittedAt || new Date().toISOString()
-  };
-  const retry = await supabase.from('results').upsert(corePayload);
-  if (!retry.error) return true;
+    const corePayload: any = {
+      id: r.id,
+      studentName: r.studentName || 'Candidate',
+      student_name: r.studentName || 'Candidate',
+      testId: testIdVal,
+      test_id: testIdVal,
+      testTitle: r.testTitle || '',
+      test_title: r.testTitle || '',
+      score: r.score || 0,
+      totalMarks: r.totalMarks || 100,
+      total_marks: r.totalMarks || 100,
+      percentage: r.percentage || 0,
+      timeTakenSeconds: timeSecs,
+      time_taken_seconds: timeSecs,
+      submittedAt: r.submittedAt || new Date().toISOString(),
+      submitted_at: r.submittedAt || new Date().toISOString()
+    };
+    const retry = await supabase.from('results').upsert(corePayload);
+    if (!retry.error) return true;
 
-  if (testIdVal !== null) {
-    const noFkPayload = { ...corePayload, testId: null, test_id: null };
-    const retryNoFk = await supabase.from('results').upsert(noFkPayload);
-    if (!retryNoFk.error) return true;
+    if (testIdVal !== null) {
+      const noFkPayload = { ...corePayload, testId: null, test_id: null };
+      const retryNoFk = await supabase.from('results').upsert(noFkPayload);
+      if (!retryNoFk.error) return true;
+    }
+    return false;
+  } catch (err: any) {
+    console.warn('Supabase save result exception note:', err?.message || err);
+    return false;
   }
-  return false;
 }
 
 export async function deleteSupabaseResult(resId: string): Promise<boolean> {
@@ -1021,14 +1084,14 @@ export async function deleteSupabaseResult(resId: string): Promise<boolean> {
   try {
     const { error } = await supabase.from('results').delete().eq('id', resId);
     if (error) {
-      console.error('Supabase delete result error:', error);
+      console.warn('Supabase delete result note:', error.message || error);
     }
     // Delete matching leaderboard entry
     await supabase.from('leaderboard').delete().eq('id', resId);
     await supabase.from('leaderboard').delete().eq('id', `lb-${resId}`);
     return !error;
-  } catch (e) {
-    console.error('Supabase delete result exception:', e);
+  } catch (e: any) {
+    console.warn('Supabase delete result exception note:', e?.message || e);
     return false;
   }
 }
@@ -1039,88 +1102,102 @@ export async function deleteSupabaseResult(resId: string): Promise<boolean> {
 
 export async function fetchSupabaseLeaderboard(): Promise<LeaderboardEntry[] | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('leaderboard').select('*');
-  if (error) {
-    console.error('Supabase fetch leaderboard error:', error);
+  try {
+    const { data, error } = await supabase.from('leaderboard').select('*');
+    if (error) {
+      console.warn('Supabase fetch leaderboard note (using Firestore):', error.message || error);
+      return null;
+    }
+    return (data || []).map((row: any) => {
+      const timeSec = Number(row.time_taken_seconds || row.timeTakenSeconds || row.timetakenseconds) || 0;
+      const scoreVal = Number(row.score) || 0;
+      const totalMarksVal = Number(row.total_marks || row.totalMarks || row.totalmarks) || 100;
+      const pctVal = Number(row.percentage) || (totalMarksVal ? (scoreVal / totalMarksVal) * 100 : 0);
+      const timeFmt = row.time_taken_formatted || row.timeTakenFormatted || row.timetakenformatted || (timeSec ? `${Math.floor(timeSec / 60)}m ${timeSec % 60}s` : '');
+
+      return {
+        id: row.id,
+        studentName: row.student_name || row.studentName || row.user_name || row.userName || row.userId || 'Candidate',
+        testTitle: row.test_title || row.testTitle || row.testtitle || 'Exam',
+        score: scoreVal,
+        totalMarks: totalMarksVal,
+        percentage: Math.round(pctVal * 10) / 10,
+        rank: Number(row.rank) || 1,
+        timeTakenSeconds: timeSec,
+        timeTakenFormatted: timeFmt,
+        date: row.submitted_at || row.submittedAt || row.date || new Date().toISOString().split('T')[0]
+      };
+    }) as LeaderboardEntry[];
+  } catch (err: any) {
+    console.warn('Supabase fetch leaderboard exception note (Firestore active):', err?.message || err);
     return null;
   }
-  return (data || []).map((row: any) => {
-    const timeSec = Number(row.time_taken_seconds || row.timeTakenSeconds || row.timetakenseconds) || 0;
-    const scoreVal = Number(row.score) || 0;
-    const totalMarksVal = Number(row.total_marks || row.totalMarks || row.totalmarks) || 100;
-    const pctVal = Number(row.percentage) || (totalMarksVal ? (scoreVal / totalMarksVal) * 100 : 0);
-    const timeFmt = row.time_taken_formatted || row.timeTakenFormatted || row.timetakenformatted || (timeSec ? `${Math.floor(timeSec / 60)}m ${timeSec % 60}s` : '');
-
-    return {
-      id: row.id,
-      studentName: row.student_name || row.studentName || row.user_name || row.userName || row.userId || 'Candidate',
-      testTitle: row.test_title || row.testTitle || row.testtitle || 'Exam',
-      score: scoreVal,
-      totalMarks: totalMarksVal,
-      percentage: Math.round(pctVal * 10) / 10,
-      rank: Number(row.rank) || 1,
-      timeTakenSeconds: timeSec,
-      timeTakenFormatted: timeFmt,
-      date: row.submitted_at || row.submittedAt || row.date || new Date().toISOString().split('T')[0]
-    };
-  }) as LeaderboardEntry[];
 }
 
 export async function saveSupabaseLeaderboard(lb: LeaderboardEntry): Promise<boolean> {
   if (!supabase) return false;
-  const testIdVal = lb.id && lb.id.trim() !== '' ? lb.id : null;
-  const timeSecs = Number(lb.timeTakenSeconds) || 0;
-  const timeFmt = lb.timeTakenFormatted || (timeSecs ? `${Math.floor(timeSecs / 60)}m ${timeSecs % 60}s` : '0m 0s');
+  try {
+    const testIdVal = lb.id && lb.id.trim() !== '' ? lb.id : null;
+    const timeSecs = Number(lb.timeTakenSeconds) || 0;
+    const timeFmt = lb.timeTakenFormatted || (timeSecs ? `${Math.floor(timeSecs / 60)}m ${timeSecs % 60}s` : '0m 0s');
 
-  const payload: any = {
-    id: lb.id,
-    userId: lb.studentName || 'Candidate',
-    userName: lb.studentName || 'Candidate',
-    user_name: lb.studentName || 'Candidate',
-    studentName: lb.studentName || 'Candidate',
-    student_name: lb.studentName || 'Candidate',
-    testId: testIdVal,
-    test_id: testIdVal,
-    testTitle: lb.testTitle || 'Exam',
-    test_title: lb.testTitle || 'Exam',
-    score: lb.score || 0,
-    totalMarks: lb.totalMarks || 100,
-    total_marks: lb.totalMarks || 100,
-    percentage: lb.percentage || 0,
-    rank: lb.rank || 1,
-    timeTakenSeconds: timeSecs,
-    time_taken_seconds: timeSecs,
-    timeTakenFormatted: timeFmt,
-    time_taken_formatted: timeFmt,
-    submittedAt: lb.date || new Date().toISOString(),
-    submitted_at: lb.date || new Date().toISOString()
-  };
+    const payload: any = {
+      id: lb.id,
+      userId: lb.studentName || 'Candidate',
+      userName: lb.studentName || 'Candidate',
+      user_name: lb.studentName || 'Candidate',
+      studentName: lb.studentName || 'Candidate',
+      student_name: lb.studentName || 'Candidate',
+      testId: testIdVal,
+      test_id: testIdVal,
+      testTitle: lb.testTitle || 'Exam',
+      test_title: lb.testTitle || 'Exam',
+      score: lb.score || 0,
+      totalMarks: lb.totalMarks || 100,
+      total_marks: lb.totalMarks || 100,
+      percentage: lb.percentage || 0,
+      rank: lb.rank || 1,
+      timeTakenSeconds: timeSecs,
+      time_taken_seconds: timeSecs,
+      timeTakenFormatted: timeFmt,
+      time_taken_formatted: timeFmt,
+      submittedAt: lb.date || new Date().toISOString(),
+      submitted_at: lb.date || new Date().toISOString()
+    };
 
-  const { error } = await supabase.from('leaderboard').upsert(payload);
-  if (!error) return true;
+    const { error } = await supabase.from('leaderboard').upsert(payload);
+    if (!error) return true;
 
-  console.warn('Supabase saveLeaderboard full payload error, attempting fallback:', error);
-  const corePayload: any = {
-    id: lb.id,
-    studentName: lb.studentName || 'Candidate',
-    student_name: lb.studentName || 'Candidate',
-    testTitle: lb.testTitle || 'Exam',
-    test_title: lb.testTitle || 'Exam',
-    score: lb.score || 0,
-    totalMarks: lb.totalMarks || 100,
-    total_marks: lb.totalMarks || 100,
-    percentage: lb.percentage || 0,
-    timeTakenFormatted: timeFmt,
-    time_taken_formatted: timeFmt
-  };
-  const retry = await supabase.from('leaderboard').upsert(corePayload);
-  return !retry.error;
+    const corePayload: any = {
+      id: lb.id,
+      studentName: lb.studentName || 'Candidate',
+      student_name: lb.studentName || 'Candidate',
+      testTitle: lb.testTitle || 'Exam',
+      test_title: lb.testTitle || 'Exam',
+      score: lb.score || 0,
+      totalMarks: lb.totalMarks || 100,
+      total_marks: lb.totalMarks || 100,
+      percentage: lb.percentage || 0,
+      timeTakenFormatted: timeFmt,
+      time_taken_formatted: timeFmt
+    };
+    const retry = await supabase.from('leaderboard').upsert(corePayload);
+    return !retry.error;
+  } catch (err: any) {
+    console.warn('Supabase save leaderboard exception note:', err?.message || err);
+    return false;
+  }
 }
 
 export async function deleteSupabaseLeaderboard(id: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('leaderboard').delete().eq('id', id);
-  return !error;
+  try {
+    const { error } = await supabase.from('leaderboard').delete().eq('id', id);
+    return !error;
+  } catch (err: any) {
+    console.warn('Supabase delete leaderboard exception note:', err?.message || err);
+    return false;
+  }
 }
 
 // ---------------------------------------------------------
@@ -1129,9 +1206,13 @@ export async function deleteSupabaseLeaderboard(id: string): Promise<boolean> {
 
 export async function fetchSupabaseAppointments(): Promise<any[] | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('appointments').select('*');
-  if (error) return null;
-  return data;
+  try {
+    const { data, error } = await supabase.from('appointments').select('*');
+    if (error) return null;
+    return data;
+  } catch (err: any) {
+    return null;
+  }
 }
 
 export async function saveSupabaseAppointment(appointment: {
@@ -1145,28 +1226,37 @@ export async function saveSupabaseAppointment(appointment: {
 }): Promise<boolean> {
   if (!supabase) return false;
 
-  const payload = {
-    id: appointment.id || `apt-${Date.now()}`,
-    name: appointment.name,
-    email: appointment.email || '',
-    phone: appointment.phone || '',
-    subject: appointment.subject || 'Appointment / Inquiry',
-    message: appointment.message || '',
-    date: appointment.date || new Date().toISOString().split('T')[0],
-    status: 'pending',
-    createdAt: new Date().toISOString()
-  };
+  try {
+    const payload = {
+      id: appointment.id || `apt-${Date.now()}`,
+      name: appointment.name,
+      email: appointment.email || '',
+      phone: appointment.phone || '',
+      subject: appointment.subject || 'Appointment / Inquiry',
+      message: appointment.message || '',
+      date: appointment.date || new Date().toISOString().split('T')[0],
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
 
-  const { error } = await supabase.from('appointments').upsert(payload);
-  if (error) {
-    console.error('Supabase save appointment error:', error);
+    const { error } = await supabase.from('appointments').upsert(payload);
+    if (error) {
+      console.warn('Supabase save appointment note:', error.message || error);
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Supabase save appointment exception note:', err?.message || err);
     return false;
   }
-  return true;
 }
 
 export async function deleteSupabaseAppointment(id: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from('appointments').delete().eq('id', id);
-  return !error;
+  try {
+    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    return !error;
+  } catch (err: any) {
+    return false;
+  }
 }

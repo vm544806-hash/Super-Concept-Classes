@@ -528,7 +528,7 @@ export async function updateSiteSettings(settings: SiteSettings): Promise<void> 
 
   // Dual Write
   if (isSupabaseConfigured) {
-    saveSupabaseSettings(settings).catch(e => console.error('Supabase settings update error:', e));
+    saveSupabaseSettings(settings).catch(() => {});
   }
 
   try {
@@ -563,8 +563,8 @@ export async function getTests(onlyPublished: boolean = false): Promise<Test[]> 
       if (supaTests && supaTests.length > 0) {
         memoryTests = supaTests;
       }
-    } catch (e) {
-      console.error('Supabase getTests failover error:', e);
+    } catch (e: any) {
+      console.warn('Supabase getTests failover note:', e?.message || e);
     }
   }
 
@@ -1219,8 +1219,8 @@ export async function getResults(): Promise<ExamResult[]> {
       if (supaResults && supaResults.length > 0) {
         memoryResults = supaResults;
       }
-    } catch (e) {
-      console.error('Supabase getResults error:', e);
+    } catch (e: any) {
+      console.warn('Supabase getResults note:', e?.message || e);
     }
   }
 
@@ -1254,8 +1254,8 @@ export async function deleteResult(resultId: string): Promise<void> {
   if (isSupabaseConfigured) {
     try {
       await deleteSupabaseResult(resultId);
-    } catch (e) {
-      console.error('Supabase result delete error:', e);
+    } catch (e: any) {
+      console.warn('Supabase result delete note:', e?.message || e);
     }
   }
 
