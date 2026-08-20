@@ -5,7 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
-import { GoogleAdSenseManager, InPagePushAdManager, VideoSliderAdManager } from './components/common/AdComponents';
+import { GoogleAdSenseManager, InPagePushAdManager } from './components/common/AdComponents';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 
 // Pages
@@ -51,7 +51,6 @@ export default function App() {
           <BrowserRouter>
             <GoogleAdSenseManager />
             <InPagePushAdManager />
-            <VideoSliderAdManager />
             <CookieConsentBanner />
             <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
               <Navbar />

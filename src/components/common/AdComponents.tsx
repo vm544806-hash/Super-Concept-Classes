@@ -94,35 +94,6 @@ export const InPagePushAdManager: React.FC = () => {
 };
 
 export const VideoSliderAdManager: React.FC = () => {
-  const { settings } = useSettings();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Only load Video Slider Ad on Home Page when ads are enabled
-    if (!settings.adsEnabled || location.pathname !== '/') return;
-
-    const SCRIPT_ID = 'prizefamily-video-slider-script';
-    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-
-    if (!script) {
-      script = document.createElement('script');
-      script.id = SCRIPT_ID;
-      script.async = true;
-      script.referrerPolicy = 'no-referrer-when-downgrade';
-      script.src = 'https://prizefamily.com/bCXJV/snd.GYlZ0AYqWgcx/Ueqmc9/uJZOUwlCk/PJTic-yGNrzxQCzYOAD/kWtINBzjIj3BNuDFMO5YMuwt';
-      document.body.appendChild(script);
-    }
-
-    return () => {
-      if (location.pathname !== '/') {
-        const existingScript = document.getElementById(SCRIPT_ID);
-        if (existingScript) {
-          existingScript.remove();
-        }
-      }
-    };
-  }, [location.pathname, settings.adsEnabled]);
-
   return null;
 };
 
