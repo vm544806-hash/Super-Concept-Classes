@@ -23,16 +23,16 @@ export const Footer: React.FC = () => {
           
           {/* Brand Col */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow">
-                <GraduationCap className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white shadow border border-slate-700">
+                <img src="/logo.png" alt="Super Concept Classes" className="w-full h-full object-contain p-0.5" />
               </div>
               <span className="text-xl font-black text-white tracking-tight">
-                {settings.websiteName || 'Smart Exam Portal'}
+                {settings.websiteName || 'Super Concept Classes'}
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
-              India's leading practice portal for SSC, Railway, Bank, UPSC, State PCS, and Teaching competitive examinations.
+              Jharkhand's premier online learning &amp; CBT practice portal for JAC Board (Class 8th to 12th) and competitive examinations.
             </p>
             {/* Social Icons */}
             <div className="flex items-center gap-3 pt-2">

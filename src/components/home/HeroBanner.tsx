@@ -10,9 +10,9 @@ export const HeroBanner: React.FC = () => {
       <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 max-w-3xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide mb-4 text-blue-100">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-          <span>India's #1 Free Practice Test Engine</span>
+        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-wide mb-4 text-blue-100">
+          <img src="/logo.png" alt="Super Concept Classes Logo" className="w-5 h-5 rounded-full bg-white object-contain p-0.5" />
+          <span>Super Concept Classes • Official CBT Mock Test Portal</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
