@@ -77,6 +77,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <img
                 src={question.imageUrl}
                 alt="Question Diagram"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-auto object-contain max-h-60 bg-slate-50 dark:bg-slate-900"
               />
             </div>
@@ -137,6 +139,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     <img
                       src={option.imageUrl}
                       alt={`Option ${option.id}`}
+                      loading="lazy"
+                      decoding="async"
                       className="mt-2 max-h-28 rounded-lg border border-slate-200 dark:border-slate-700 object-contain"
                     />
                   )}

@@ -437,7 +437,7 @@ export const ExamPage: React.FC = () => {
 
               {/* Question Image if any */}
               {q.imageUrl && (
-                <img src={q.imageUrl} alt="Question Diagram" className="max-h-60 rounded-xl border border-slate-800 object-contain my-2" />
+                <img src={q.imageUrl} alt="Question Diagram" loading="lazy" decoding="async" className="max-h-60 rounded-xl border border-slate-800 object-contain my-2" />
               )}
 
               {/* Options */}

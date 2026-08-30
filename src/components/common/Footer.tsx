@@ -24,8 +24,19 @@ export const Footer: React.FC = () => {
           {/* Brand Col */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white shadow border border-slate-700">
-                <img src="/logo.png" alt="Super Concept Classes" className="w-full h-full object-contain p-0.5" />
+              <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-white shadow-md border border-slate-700 shrink-0">
+                <img 
+                  src="https://i.ibb.co/LdHZf6m2/logo.jpg" 
+                  alt="Super Concept Classes Official Exam Portal Logo" 
+                  width="48"
+                  height="48"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/logo.png';
+                  }}
+                />
               </div>
               <span className="text-xl font-black text-white tracking-tight">
                 {settings.websiteName || 'Super Concept Classes'}

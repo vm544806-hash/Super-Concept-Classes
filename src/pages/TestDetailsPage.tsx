@@ -145,6 +145,8 @@ export const TestDetailsPage: React.FC = () => {
             <img
               src={test.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=1200&q=80'}
               alt={test.title}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover opacity-90"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />

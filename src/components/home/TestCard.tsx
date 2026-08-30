@@ -24,6 +24,8 @@ export const TestCard: React.FC<TestCardProps> = ({ test }) => {
         <img
           src={test.imageUrl || fallbackImage}
           alt={test.title}
+          loading="lazy"
+          decoding="async"
           onError={(e) => {
             (e.target as HTMLImageElement).src = fallbackImage;
           }}

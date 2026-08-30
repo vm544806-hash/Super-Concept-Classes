@@ -11,7 +11,16 @@ export const HeroBanner: React.FC = () => {
 
       <div className="relative z-10 max-w-3xl">
         <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-wide mb-4 text-blue-100">
-          <img src="/logo.png" alt="Super Concept Classes Logo" className="w-5 h-5 rounded-full bg-white object-contain p-0.5" />
+          <img 
+            src="https://i.ibb.co/LdHZf6m2/logo.jpg" 
+            alt="Super Concept Classes Official Exam Portal Logo" 
+            width="20" 
+            height="20" 
+            className="w-5 h-5 rounded-full bg-white object-cover p-0.5" 
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/logo.png';
+            }}
+          />
           <span>Super Concept Classes • Official CBT Mock Test Portal</span>
         </div>
 

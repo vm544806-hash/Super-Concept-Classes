@@ -24,8 +24,10 @@ import {
   ShieldAlert,
   Calendar,
   AlertCircle,
-  Timer
+  Timer,
+  Upload
 } from 'lucide-react';
+import { convertImageToWebP } from '../../utils/imageUtils';
 
 export const AdminTestsPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -335,14 +337,42 @@ export const AdminTestsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Image URL (IMGBB / Direct)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-300">Thumbnail Image (WebP Auto-Convert)</label>
+                    <label className="text-[11px] text-purple-400 hover:text-purple-300 cursor-pointer flex items-center gap-1 font-bold">
+                      <Upload className="w-3 h-3" />
+                      <span>Upload & WebP Convert</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const result = await convertImageToWebP(file, 800, 500, 0.82);
+                              setEditingTest(prev => prev ? ({ ...prev, imageUrl: result.dataUrl }) : null);
+                            } catch {
+                              alert('Failed to process image');
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                   <input
                     type="url"
                     value={editingTest.imageUrl || ''}
                     onChange={e => setEditingTest({ ...editingTest, imageUrl: e.target.value })}
-                    placeholder="https://i.ibb.co/..."
+                    placeholder="https://i.ibb.co/... or upload file above"
                     className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   />
+                  {editingTest.imageUrl && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={editingTest.imageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
+                      <span className="text-[11px] text-slate-400">Preview (Optimized WebP format)</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

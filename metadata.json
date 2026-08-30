@@ -1,6 +1,6 @@
 {
-  "name": "Super Concept Classes By Daiyash Sir",
-  "description": "Online Examination Portal with Student Test Engine and Admin Management System for Class 10th, 11th, 12th, and B.A.",
+  "name": "Super Concept Classes Exam Portal",
+  "description": "Official online CBT examination portal offering mock tests, chapter-wise MCQs, and state-level rank evaluation for JAC Board & competitive exams.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
