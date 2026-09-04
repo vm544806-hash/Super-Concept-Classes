@@ -10,7 +10,7 @@ interface FAQItem {
 
 export const FAQPage: React.FC = () => {
   const { settings } = useSettings();
-  const siteName = settings.websiteName || 'Smart Exam Portal';
+  const siteName = settings.websiteName || 'Super Concept Classes Exam Portal';
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const faqs: FAQItem[] = [

@@ -111,7 +111,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar with mandatory Google AdSense Legal links */}
         <div className="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>{settings.footerText || '© 2026 Smart Exam Portal. All Rights Reserved.'}</p>
+          <p>{settings.footerText || '© 2026 Super Concept Classes Exam Portal. All Rights Reserved.'}</p>
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-400">
             <Link to="/privacy-policy" className="hover:text-blue-400 transition-colors">Privacy Policy</Link>
             <span>•</span>

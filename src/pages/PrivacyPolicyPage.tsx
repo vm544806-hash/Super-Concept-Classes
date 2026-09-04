@@ -4,8 +4,8 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export const PrivacyPolicyPage: React.FC = () => {
   const { settings } = useSettings();
-  const siteName = settings.websiteName || 'Smart Exam Portal';
-  const email = settings.contactEmail || 'privacy@smartexamportal.com';
+  const siteName = settings.websiteName || 'Super Concept Classes Exam Portal';
+  const email = settings.contactEmail || 'superconceptclasses@gmail.com';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">

@@ -4,7 +4,7 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export const TermsPage: React.FC = () => {
   const { settings } = useSettings();
-  const siteName = settings.websiteName || 'Smart Exam Portal';
+  const siteName = settings.websiteName || 'Super Concept Classes Exam Portal';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
