@@ -7,6 +7,7 @@ import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { GoogleAdSenseManager, InPagePushAdManager } from './components/common/AdComponents';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
+import { CanonicalManager } from './components/common/CanonicalManager';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -49,6 +50,7 @@ export default function App() {
       <SettingsProvider>
         <AuthProvider>
           <BrowserRouter>
+            <CanonicalManager />
             <GoogleAdSenseManager />
             <InPagePushAdManager />
             <CookieConsentBanner />
@@ -59,6 +61,7 @@ export default function App() {
                 <Routes>
                   {/* Student Routes */}
                   <Route path="/" element={<HomePage />} />
+                  <Route path="/tests" element={<HomePage />} />
                   <Route path="/test/:id" element={<TestDetailsPage />} />
                   <Route path="/exam/:id" element={<ExamPage />} />
                   <Route path="/result" element={<ResultPage />} />
